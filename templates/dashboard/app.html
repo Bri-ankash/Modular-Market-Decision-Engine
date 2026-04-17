@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}MMDE Dashboard{% endblock %}
+{% block extra_head %}
+<style>
+.d-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 4%;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.d-body{max-width:1100px;margin:0 auto;padding:24px 4%}
+.signal-card{border-radius:14px;padding:28px;border:1px solid var(--border);background:var(--surface2)}
+.module-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.market-btn{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;transition:all .2s;text-transform:capitalize}
+.market-btn.active,.market-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,0.05)}
+.market-btn.locked{opacity:.4;cursor:not-allowed}
+</style>
+{% endblock %}
+{% block content %}
+<nav class="d-nav">
+  <div style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;color:var(--primary)">MMDE<span style="color:var(--text)"> v2</span></div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span style="font-size:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:var(--primary);padding:4px 10px;border-radius:6px;font-weight:600">{{ user.subscription_plan }}</span>
+    <a href="/subscription/" style="font-size:13px;color:var(--muted)">Upgrade</a>
+    <a href="/logout/" style="font-size:13px;color:var(--red);font-weight:600">Logout</a>
+  </div>
+</nav>
+
+<div class="d-body">
+  {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+  {% if not user.is_active_subscription %}
+  <div class="alert" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.25);color:#fbbf24;margin-bottom:20px">
+    You are on the FREE plan. <a href="/subscription/" style="color:var(--primary);font-weight:700">Upgrade to access markets →</a>
+  </div>
+  {% endif %}
+
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
+
+    <!-- LEFT — Controls -->
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)">Select Market</h3>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          {% for market in markets %}
+          <button class="market-btn {% if market in allowed_markets %}{% else %}locked{% endif %}"
+            onclick="selectMarket('{{ market }}')"
+            id="mkt-{{ market }}"
+            {% if market not in allowed_markets and not user.is_superuser %}disabled{% endif %}>
+            <span style="text-transform:capitalize">{{ market }}</span>
+            {% if market not in allowed_markets and not user.is_superuser %}
+            <span style="font-size:10px;margin-left:4px">🔒</span>{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Symbol & Entry</h3>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Symbol</label>
+          <input type="text" id="symbol-input" value="EURUSD" placeholder="EURUSD, XAUUSD..."
+            style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:14px;font-weight:600;outline:none"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Interval</label>
+            <select id="interval-input" style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:13px;outline:none">
+              <option value="1m">1 Min</option>
+              <option value="5m">5 Min</option>
+              <option value="15m">15 Min</option>
+              <option value="30m">30 Min</option>
+              <option value="1h" selected>1 Hour</option>
+              <option value="4h">4 Hours</option>
+              <option value="1d">Daily</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Data</label>
+            <select id="data-source" style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:13px;outline:none">
+              <option value="live">Live Data</option>
+              <option value="demo">Demo Data</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Entry Price (optional)</label>
+          <input type="number" id="entry-input" placeholder="1.08500" step="0.00001"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:14px;font-family:'Courier New',monospace;outline:none"/>
+        </div>
+        <button onclick="runAnalysis()" id="analyze-btn"
+          class="btn btn-primary" style="width:100%;padding:12px;font-size:14px">
+          ⚡ Run Analysis
+        </button>
+      </div>
+
+      <!-- Module selector -->
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Modules</h3>
+        <div style="display:flex;flex-direction:column;gap:6px" id="module-list">
+          {% for mod in modules %}
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--muted)">
+            <input type="checkbox" value="{{ mod }}" checked style="accent-color:var(--primary)"/>
+            <span style="text-transform:capitalize">{{ mod|cut:'_' }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Output -->
+    <div>
+      <div class="signal-card" id="result-card" style="min-height:400px;display:flex;align-items:center;justify-content:center">
+        <div style="text-align:center;color:var(--muted)">
+          <div style="font-size:36px;margin-bottom:12px">🧠</div>
+          <p style="font-size:14px">Select a market and run analysis</p>
+          <p style="font-size:12px;margin-top:6px">Paste your OHLCV data or use the demo</p>
+          <button onclick="loadDemo()" class="btn btn-outline btn-sm" style="margin-top:14px">Load Demo Data</button>
+        </div>
+      </div>
+
+      <!-- History -->
+      {% if history %}
+      <div class="card" style="margin-top:14px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Recent Analysis</h3>
+        <div>
+          {% for h in history %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span style="font-family:'Courier New',monospace;color:var(--text)">{{ h.symbol }}</span>
+            <span style="color:var(--muted);text-transform:capitalize">{{ h.market }}</span>
+            {% if h.result %}
+            <span class="badge badge-{{ h.result.action|default:'NEUTRAL' }}">{{ h.result.action|default:'—' }}</span>
+            {% endif %}
+            <span style="font-size:11px;color:var(--muted)">{{ h.created_at|timesince }} ago</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let selectedMarket = '{% if allowed_markets %}{{ allowed_markets.0 }}{% else %}forex{% endif %}';
+let demoCandles = null;
+
+function selectMarket(m){
+  selectedMarket = m;
+  document.querySelectorAll('.market-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('mkt-'+m);
+  if(btn) btn.classList.add('active');
+  // Auto-set symbol
+  const defaults = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
+  document.getElementById('symbol-input').value = defaults[m] || '';
+}
+
+function getSelectedModules(){
+  return Array.from(document.querySelectorAll('#module-list input:checked')).map(i=>i.value);
+}
+
+function loadDemo(){
+  // Generate synthetic candle data for demo
+  const candles = [];
+  let price = 1.0850;
+  for(let i=0;i<30;i++){
+    const o = price;
+    const change = (Math.random()-0.48)*0.002;
+    const c = o + change;
+    const h = Math.max(o,c) + Math.random()*0.001;
+    const l = Math.min(o,c) - Math.random()*0.001;
+    const v = Math.floor(Math.random()*10000)+1000;
+    candles.push({open:+o.toFixed(5),high:+h.toFixed(5),low:+l.toFixed(5),close:+c.toFixed(5),volume:v});
+    price = c;
+  }
+  demoCandles = candles;
+  document.getElementById('symbol-input').value = 'EURUSD';
+  selectedMarket = 'forex';
+  document.getElementById('mkt-forex').classList.add('active');
+  showInfo('Demo data loaded (30 synthetic candles). Click Run Analysis.');
+}
+
+function showInfo(msg){
+  document.getElementById('result-card').innerHTML = `<div style="text-align:center;color:var(--primary);font-size:14px;padding:24px">${msg}</div>`;
+}
+
+async function runAnalysis(){
+  const btn = document.getElementById('analyze-btn');
+  btn.textContent = '⏳ Analyzing...';
+  btn.disabled = true;
+
+  const symbol = document.getElementById('symbol-input').value || 'EURUSD';
+  const entry = parseFloat(document.getElementById('entry-input').value) || null;
+  const modules = getSelectedModules();
+
+  try {
+    const resp = await fetch('/api/mmde/analyze', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({
+        market: selectedMarket,
+        symbol: symbol,
+        selected_modules: modules,
+        entry_price: entry,
+        candles: demoCandles || [],
+      })
+    });
+    const data = await resp.json();
+    if(data.error){ showError(data.error); return; }
+    renderResult(data);
+  } catch(e){
+    showError('Analysis failed: ' + e.message);
+  } finally {
+    btn.textContent = '⚡ Run Analysis';
+    btn.disabled = false;
+  }
+}
+
+function renderResult(d){
+  const actionColor = {BUY:'#22d3a0',SELL:'#f43f5e',WAIT:'#fbbf24','NO TRADE':'#f43f5e'}[d.action] || '#888';
+  const confPct = Math.round((d.confidence||0)*100);
+  const mods = (d.module_signals||[]).map(s=>`
+    <div class="module-row">
+      <span style="font-family:'Courier New',monospace;color:var(--muted);font-size:12px">${s.module}</span>
+      <span class="badge badge-${s.signal}">${s.signal}</span>
+      <span style="font-size:11px;color:var(--muted)">${Math.round((s.confidence||0)*100)}%</span>
+    </div>`).join('');
+
+  document.getElementById('result-card').innerHTML = `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:'Courier New',monospace">${d.symbol} · ${selectedMarket.toUpperCase()}</div>
+          <div style="font-size:52px;font-weight:700;color:${actionColor};letter-spacing:-2px;font-family:'Courier New',monospace">${d.action}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Confidence</div>
+          <div style="font-size:36px;font-weight:700;color:${actionColor}">${confPct}%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${d.duration_ms}ms · ${d.modules_run} modules · ${d.data_points||'?'} candles · ${d.market_data_source||'?'}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Entry</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;color:var(--text)">${d.entry_zone}</div>
+        </div>
+        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Stop Loss</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;color:#f43f5e">${d.stop_loss}</div>
+        </div>
+        ${(d.take_profit||[]).map((tp,i)=>`
+        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">TP${i+1}</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;color:#22d3a0">${tp}</div>
+        </div>`).join('')}
+        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Market Type</div>
+          <div style="font-size:13px;color:var(--primary);font-weight:600;text-transform:capitalize">${d.market_personality?.type||'—'}</div>
+        </div>
+      </div>
+
+      <!-- Reasons -->
+      ${(d.reasons||[]).length ? `
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Why</div>
+        ${d.reasons.map(r=>`<div style="font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)">→ ${r}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Module signals -->
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Module Signals</div>
+        ${mods}
+      </div>
+
+      ${d.warning ? `<div style="margin-top:14px;padding:10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:7px;font-size:11px;color:#fbbf24">${d.warning}</div>` : ''}
+    </div>`;
+}
+
+function showError(msg){
+  document.getElementById('result-card').innerHTML = `<div style="text-align:center;color:var(--red);padding:24px">${msg}</div>`;
+}
+
+function getCookie(name){
+  const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():'';
+}
+
+// Init
+selectMarket(selectedMarket);
+</script>
+{% endblock %}

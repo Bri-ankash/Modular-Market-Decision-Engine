@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{% block title %}MMDE{% endblock %}</title>
+{% load static %}
+<link rel="manifest" href="/static/manifest.json"/>
+<meta name="theme-color" content="#E3DED3"/>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#E3DED3;
+  --surface:#F5F2EC;
+  --surface2:#EDE8E0;
+  --border:#C8C0B0;
+  --border2:#B8AF9F;
+  --text:#1A1208;
+  --muted:#6B6050;
+  --primary:#5B4FCF;
+  --primary2:#7B6EE8;
+  --green:#16A34A;
+  --red:#DC2626;
+  --gold:#B45309;
+  --orange:#C2410C;
+  --signal-buy:#15803D;
+  --signal-sell:#DC2626;
+  --signal-wait:#B45309;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Lato',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 22px;border-radius:9px;font-weight:600;font-size:14px;border:none;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 3px 12px rgba(91,79,207,0.25)}
+.btn-primary:hover{background:#4A3FBE;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-outline:hover{background:rgba(91,79,207,0.06)}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:7px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(26,18,8,0.06)}
+.badge{padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700}
+.badge-BUY,.badge-buy{background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0}
+.badge-SELL,.badge-sell{background:#FEE2E2;color:#DC2626;border:1px solid #FECACA}
+.badge-WAIT,.badge-wait{background:#FEF3C7;color:#B45309;border:1px solid #FDE68A}
+.badge-NEUTRAL,.badge-neutral{background:rgba(107,96,80,0.1);color:#6B6050;border:1px solid var(--border)}
+.badge-NO-TRADE{background:#FEE2E2;color:#DC2626;border:1px solid #FECACA}
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.alert-success{background:#DCFCE7;border:1px solid #BBF7D0;color:#16A34A}
+.alert-error{background:#FEE2E2;border:1px solid #FECACA;color:#DC2626}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::selection{background:var(--primary);color:#fff}
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% block content %}{% endblock %}
+{% block extra_js %}{% endblock %}
+</body>
+</html>

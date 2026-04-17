@@ -1,0 +1,74 @@
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = os.environ.get('SECRET_KEY', 'mmde-v2-secret-2026-kaliworks')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = ['*']
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'users', 'payments', 'subscriptions', 'markets', 'mmde_gateway',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'mmde_gateway.middleware.MarketAccessMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS':[BASE_DIR/'templates'],'APP_DIRS':True,'OPTIONS':{'context_processors':['django.template.context_processors.debug','django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]
+WSGI_APPLICATION = 'config.wsgi.application'
+
+import dj_database_url
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if DATABASE_URL:
+    DATABASES = {'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)}
+else:
+    DATABASES = {'default': {'ENGINE':'django.db.backends.sqlite3','NAME':BASE_DIR/'mmde.db'}}
+
+AUTH_USER_MODEL = 'users.MMDEUser'
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_TZ = True
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+LOGIN_URL = '/login/'
+
+# Google OAuth
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+
+# Plans
+SUBSCRIPTION_PLANS = {
+    'FREE':  {'price': 0,  'markets': [],                                          'name': 'Free'},
+    'BASIC': {'price': 30, 'markets': ['forex','gold'],                             'name': 'Basic — $30'},
+    'PRO':   {'price': 40, 'markets': ['forex','gold','indices'],                   'name': 'Pro — $40'},
+    'ELITE': {'price': 50, 'markets': ['forex','gold','indices','crypto','stocks'], 'name': 'Elite — $50'},
+}
+
+ALL_MARKETS = ['forex','gold','indices','crypto','stocks']
+
+# M-Pesa
+MPESA_TILL = os.environ.get('MPESA_TILL', '5359428')
+
+# Google OAuth
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:8004/auth/google/callback')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8004')
