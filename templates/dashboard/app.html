@@ -38,10 +38,10 @@
         <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)">Select Market</h3>
         <div style="display:flex;flex-direction:column;gap:7px">
           {% for market in markets %}
-          <button class="market-btn {% if market in allowed_markets %}{% else %}locked{% endif %}"
+          <button class="market-btn {% if market in allowed_markets or request.user.is_superuser %}{% else %}locked{% endif %}"
             onclick="selectMarket('{{ market }}')"
             id="mkt-{{ market }}"
-            {% if market not in allowed_markets and not user.is_superuser %}disabled{% endif %}>
+            {% if market not in allowed_markets and not request.user.is_superuser %}disabled title='Upgrade to access {{ market }}'{% endif %}>
             <span style="text-transform:capitalize">{{ market }}</span>
             {% if market not in allowed_markets and not user.is_superuser %}
             <span style="font-size:10px;margin-left:4px">🔒</span>{% endif %}

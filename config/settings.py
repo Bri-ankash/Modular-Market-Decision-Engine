@@ -77,17 +77,8 @@ GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
 
 # Plans
-SUBSCRIPTION_PLANS = {
-    'FREE':  {'price': 0,  'markets': [],                                          'name': 'Free'},
-    'BASIC': {'price': 30, 'markets': ['forex','gold'],                             'name': 'Basic — $30'},
-    'PRO':   {'price': 40, 'markets': ['forex','gold','indices'],                   'name': 'Pro — $40'},
-    'ELITE': {'price': 50, 'markets': ['forex','gold','indices','crypto','stocks'], 'name': 'Elite — $50'},
-}
-
-ALL_MARKETS = ['forex','gold','indices','crypto','stocks']
 
 # M-Pesa
-MPESA_TILL = os.environ.get('MPESA_TILL', '5359428')
 
 # Google OAuth
 GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:8004/auth/google/callback')
@@ -107,3 +98,14 @@ if not DEBUG:
 
 # ── RATE LIMITING (basic) ──
 RATELIMIT_ENABLE = True
+
+SUBSCRIPTION_PLANS = {
+    'FREE':  {'price': 0,  'markets': [],                                              'name': 'Free'},
+    'BASIC': {'price': 30, 'markets': ['forex', 'gold'],                               'name': 'Basic — $30'},
+    'PRO':   {'price': 40, 'markets': ['forex', 'gold', 'indices'],                    'name': 'Pro — $40'},
+    'ELITE': {'price': 50, 'markets': ['forex', 'gold', 'indices', 'crypto', 'stocks'],'name': 'Elite — $50'},
+}
+
+ALL_MARKETS = ['forex', 'gold', 'indices', 'crypto', 'stocks']
+
+MPESA_TILL = os.environ.get('MPESA_TILL', '5359428')

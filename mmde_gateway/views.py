@@ -101,4 +101,5 @@ def subscription(request):
         'plans': settings.SUBSCRIPTION_PLANS,
         'user': user,
         'pending': pending,
+        'mpesa_till': '5359428',
     })

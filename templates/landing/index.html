@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}MMDE — {% endblock %}
+{% block title %}MMDE — Market Decision Intelligence{% endblock %}
 {% block extra_head %}
 <style>
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(227,222,211,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 5%;height:62px;display:flex;align-items:center;justify-content:space-between}
 .hero{min-height:100vh;display:flex;align-items:center;padding:90px 5% 70px;background:linear-gradient(150deg,#EAE4D5,#E3DED3,#DDD5C8)}
 .hero h1{font-size:clamp(34px,5.5vw,68px);font-weight:800;line-height:1.07;letter-spacing:-2px;margin-bottom:18px;color:var(--text)}
-.hero h1 .accent{color:var(--primary)}
 .eyebrow{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .eyebrow::before{content:'';width:16px;height:2px;background:var(--primary);border-radius:2px}
-.plan-card{border-radius:14px;padding:28px;border:1.5px solid var(--border);background:var(--surface);transition:all .2s}
+.plan-card{border-radius:14px;padding:28px;border:1.5px solid var(--border);background:var(--surface);transition:all .2s;position:relative}
 .plan-card:hover{border-color:var(--primary);transform:translateY(-3px);box-shadow:0 8px 24px rgba(91,79,207,0.12)}
-.plan-card.featured{border-color:var(--primary);background:linear-gradient(135deg,rgba(91,79,207,0.04),var(--surface))}
-.module-chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted)}
-.module-chip strong{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:2px}
+.plan-card.featured{border-color:var(--primary)}
+.plan-card.free-plan{opacity:.8}
+.check{color:var(--green);font-weight:700;margin-right:6px}
+.cross{color:#ccc;margin-right:6px}
 </style>
 {% endblock %}
 {% block content %}
@@ -27,54 +27,37 @@
       <div style="font-size:10px;color:var(--muted)">Market Intelligence</div>
     </div>
   </div>
-  <!-- Only login, no get started -->
-  <a href="/login/" class="btn btn-outline btn-sm">Login</a>
+  <a href="/login/" class="btn btn-outline btn-sm">Sign In</a>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
   <div style="max-width:680px">
-    <h1>
-      Smarter trading decisions.<br/>
-      <span class="accent">Not more noise.</span>
-    </h1>
+    <div class="eyebrow">Trading Decision Intelligence</div>
+    <h1>Smarter trading decisions.<br/><span style="color:var(--primary)">Not more noise.</span></h1>
     <p style="font-size:16px;color:var(--muted);line-height:1.85;max-width:500px;margin-bottom:36px">
-      MMDE runs 9 independent market analysis modules in parallel, resolves conflicts using adaptive weighted logic, and outputs a clear, structured trade decision with entry, stop loss, and take profit.
+      MMDE runs 9 independent market analysis modules, resolves conflicts using adaptive weighted logic, and outputs a clear structured trade decision with entry, stop loss, and take profit.
     </p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="/register/" class="btn btn-primary" style="padding:13px 32px;font-size:15px">Create Free Account</a>
       <a href="#pricing" class="btn btn-outline" style="padding:13px 24px;font-size:15px">View Plans</a>
-    </div>
-    <!-- Sample output -->
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;max-width:420px;box-shadow:0 4px 16px rgba(26,18,8,0.08)">
-      <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Live Output Example</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <span style="font-size:20px;font-weight:800;color:var(--text)">XAU/USD</span>
-        <span class="badge badge-BUY" style="font-size:13px;padding:6px 14px">BUY</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px">
-        <div><div style="color:var(--muted)">Confidence</div><strong style="color:var(--green)">78%</strong></div>
-        <div><div style="color:var(--muted)">Modules</div><strong>9/9</strong></div>
-        <div><div style="color:var(--muted)">Market</div><strong>Trend</strong></div>
-      </div>
-      <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-        <div style="background:var(--surface2);border-radius:6px;padding:7px 10px"><div style="color:var(--muted)">Stop Loss</div><strong style="color:var(--red)">2,312.50</strong></div>
-        <div style="background:var(--surface2);border-radius:6px;padding:7px 10px"><div style="color:var(--muted)">Take Profit</div><strong style="color:var(--green)">2,348.00</strong></div>
-      </div>
     </div>
   </div>
 </section>
 
 <!-- MODULES -->
 <section style="padding:80px 5%;background:var(--surface);border-top:1px solid var(--border)">
-  <div style="text-align:center;margin-bottom:40px">
+  <div style="text-align:center;margin-bottom:36px">
     <div class="eyebrow" style="justify-content:center">Analysis Engine</div>
-    <h2 style="font-size:clamp(22px,4vw,40px);font-weight:800;letter-spacing:-1px;color:var(--text);margin-bottom:10px">9 Independent Modules</h2>
-    <p style="color:var(--muted);font-size:15px;max-width:480px;margin:0 auto">Each module runs independently. The decision engine combines them with adaptive weighting based on market conditions.</p>
+    <h2 style="font-size:clamp(22px,4vw,38px);font-weight:800;letter-spacing:-1px;color:var(--text)">9 Independent Modules</h2>
+    <p style="color:var(--muted);font-size:14px;margin-top:8px;max-width:460px;margin-left:auto;margin-right:auto">Each runs independently. The engine combines them with adaptive weighting.</p>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;max-width:1000px;margin:0 auto">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;max-width:1000px;margin:0 auto">
     {% for name, desc in modules %}
-    <div class="module-chip"><strong>{{ name }}</strong>{{ desc }}</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">{{ name }}</div>
+      <div style="font-size:12px;color:var(--muted)">{{ desc }}</div>
+    </div>
     {% endfor %}
   </div>
 </section>
@@ -83,24 +66,75 @@
 <section id="pricing" style="padding:80px 5%;background:var(--bg)">
   <div style="text-align:center;margin-bottom:40px">
     <div class="eyebrow" style="justify-content:center">Pricing</div>
-    <h2 style="font-size:clamp(22px,4vw,40px);font-weight:800;letter-spacing:-1px;color:var(--text);margin-bottom:10px">Simple, flat monthly pricing</h2>
-    <p style="color:var(--muted)">Pay via M-Pesa. Admin activates within 24 hours.</p>
+    <h2 style="font-size:clamp(22px,4vw,38px);font-weight:800;letter-spacing:-1px;color:var(--text)">Simple monthly pricing</h2>
+    <p style="color:var(--muted);font-size:14px;margin-top:8px">Pay via M-Pesa Till <strong style="color:var(--primary)">5359428</strong>. Activated within 24hrs.</p>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto">
-    {% for plan_key, plan in plans.items %}{% if plan_key != 'FREE' %}
-    <div class="plan-card {% if plan_key == 'PRO' %}featured{% endif %}">
-      {% if plan_key == 'PRO' %}<div style="font-size:11px;color:var(--primary);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Most Popular</div>{% endif %}
-      <div style="font-size:38px;font-weight:800;color:var(--text);letter-spacing:-1.5px;margin-bottom:4px">${{ plan.price }}<span style="font-size:16px;color:var(--muted);font-weight:400">/mo</span></div>
-      <div style="font-size:14px;color:var(--muted);margin-bottom:18px">{{ plan.name }}</div>
-      {% for market in plan.markets %}
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;color:var(--text)">
-        <span style="color:var(--green);font-size:14px">✓</span>
-        <span style="text-transform:capitalize;font-weight:500">{{ market }}</span>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;max-width:960px;margin:0 auto">
+
+    <!-- FREE -->
+    <div class="plan-card free-plan">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600">Free</div>
+      <div style="font-size:36px;font-weight:800;color:var(--text);letter-spacing:-1px;margin-bottom:4px">$0<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span></div>
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px"><span class="cross">✕</span>No market access</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px"><span class="cross">✕</span>View only</div>
+      <div style="margin-top:18px">
+        <a href="/register/" class="btn btn-outline" style="width:100%;justify-content:center;display:flex">Create Account</a>
       </div>
-      {% endfor %}
-      <a href="/register/" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:18px">Sign Up</a>
     </div>
-    {% endif %}{% endfor %}
+
+    <!-- BASIC -->
+    <div class="plan-card">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600">Basic</div>
+      <div style="font-size:36px;font-weight:800;color:var(--text);letter-spacing:-1px;margin-bottom:4px">$30<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span></div>
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Forex</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Gold (XAU/USD)</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><span class="cross">✕</span>Indices</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><span class="cross">✕</span>Crypto</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><span class="cross">✕</span>Stocks</div>
+      <div style="margin-top:18px">
+        <a href="/register/" class="btn btn-primary" style="width:100%;justify-content:center;display:flex">Get Basic</a>
+      </div>
+    </div>
+
+    <!-- PRO -->
+    <div class="plan-card featured">
+      <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:100px;white-space:nowrap">Most Popular</div>
+      <div style="font-size:13px;color:var(--primary);margin-bottom:6px;font-weight:700">Pro</div>
+      <div style="font-size:36px;font-weight:800;color:var(--text);letter-spacing:-1px;margin-bottom:4px">$40<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span></div>
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Forex</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Gold (XAU/USD)</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Indices (US30, NAS100)</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><span class="cross">✕</span>Crypto</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><span class="cross">✕</span>Stocks</div>
+      <div style="margin-top:18px">
+        <a href="/register/" class="btn btn-primary" style="width:100%;justify-content:center;display:flex">Get Pro</a>
+      </div>
+    </div>
+
+    <!-- ELITE -->
+    <div class="plan-card">
+      <div style="font-size:13px;color:var(--gold);margin-bottom:6px;font-weight:700">Elite</div>
+      <div style="font-size:36px;font-weight:800;color:var(--text);letter-spacing:-1px;margin-bottom:4px">$50<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span></div>
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Forex</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Gold (XAU/USD)</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Indices (US30, NAS100)</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Crypto (BTC, ETH)</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px"><span class="check">✓</span>Stocks (AAPL, TSLA...)</div>
+      <div style="margin-top:18px">
+        <a href="/register/" class="btn btn-primary" style="width:100%;justify-content:center;display:flex;background:var(--gold);color:#fff">Get Elite</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="text-align:center;margin-top:28px;padding:16px;background:var(--surface);border-radius:12px;max-width:400px;margin-left:auto;margin-right:auto;border:1px solid var(--border)">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Pay via M-Pesa → Lipa na M-Pesa → Buy Goods</div>
+    <div style="font-size:28px;font-weight:800;color:var(--primary);letter-spacing:3px;font-family:'Courier New',monospace">5359428</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Then submit your M-Pesa code on the upgrade page</div>
   </div>
 </section>
 
