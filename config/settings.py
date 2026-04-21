@@ -1,10 +1,13 @@
-import os
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.environ.get('SECRET_KEY', 'mmde-v2-secret-2026-kaliworks')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG") == "True"
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -32,13 +35,30 @@ TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS'
 WSGI_APPLICATION = 'config.wsgi.application'
 
 import dj_database_url
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)}
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
 else:
-    DATABASES = {'default': {'ENGINE':'django.db.backends.sqlite3','NAME':BASE_DIR/'mmde.db'}}
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "mmde.db",
+        }
+    }
 
 AUTH_USER_MODEL = 'users.MMDEUser'
+AUTHENTICATION_BACKENDS = [
+    'users.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -75,7 +95,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8004')
 
 # ── SECURITY ──
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
