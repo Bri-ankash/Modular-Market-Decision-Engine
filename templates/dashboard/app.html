@@ -91,7 +91,7 @@
       <div class="card" style="margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Modules to Run</div>
         <div style="display:flex;flex-direction:column;gap:5px" id="module-list">
-          {% for mod in 'structure,liquidity,trap_detection,price_action,imbalance,volume,momentum,volatility,session'|split:',' %}
+          {% for mod in modules %}
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)">
             <input type="checkbox" value="{{ mod }}" checked style="accent-color:var(--primary)"/>
             <span style="text-transform:capitalize">{{ mod|cut:'_' }}</span>
