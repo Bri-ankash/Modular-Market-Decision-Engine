@@ -42,22 +42,29 @@ class MMDEUser(AbstractUser):
     # 🔥 FIX: attach custom manager
     objects = MMDEUserManager()
 
-    def __str__(self):
-        return f"{self.email} ({self.subscription_plan})"
+def __str__(self):
+    return f"{self.email} ({self.subscription_plan})"
 
-    def can_access_market(self, market):
-        if self.is_superuser:
-            return True
-        if not self.is_active_subscription:
-            return False
-        return market in self.allowed_markets
 
-    def get_allowed_markets(self):
-        from django.conf import settings
-        plan = settings.SUBSCRIPTION_PLANS.get(self.subscription_plan, {})
-        return plan.get('markets', [])
+def can_access_market(self, market):
+    if self.is_superuser:
+        return True
+    if not self.is_active_subscription:
+        return False
+    return market in self.allowed_markets
 
-    def save(self, *args, **kwargs):
-        from django.conf import settings
-        self.allowed_markets = self.get_allowed_markets()
-        super().save(*args, **kwargs)
+
+def get_allowed_markets(self):
+    from django.conf import settings
+
+    plans = getattr(settings, "SUBSCRIPTION_PLANS", {})
+    plan = plans.get(self.subscription_plan, {})
+    return plan.get("markets", [])
+
+
+def save(self, *args, **kwargs):
+    from django.conf import settings
+
+    self.allowed_markets = self.get_allowed_markets()
+    super().save(*args, **kwargs)
+
