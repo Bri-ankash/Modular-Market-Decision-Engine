@@ -85,7 +85,6 @@ GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:80
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8004')
 
 # ── SECURITY ──
-    X_FRAME_OPTIONS = 'DENY'
 
 # ── RATE LIMITING (basic) ──
 RATELIMIT_ENABLE = True
@@ -104,6 +103,8 @@ DEBUG = True
 
 
 
+
+X_FRAME_OPTIONS = 'DENY'
 SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = False
