@@ -85,7 +85,6 @@ GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:80
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8004')
 
 # ── SECURITY ──
-    CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
 
 # ── RATE LIMITING (basic) ──
@@ -102,6 +101,7 @@ ALL_MARKETS = ['forex', 'gold', 'indices', 'crypto', 'stocks']
 
 MPESA_TILL = os.environ.get('MPESA_TILL', '5359428')
 DEBUG = True
+
 
 
 SECURE_SSL_REDIRECT = False
