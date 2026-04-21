@@ -3,285 +3,510 @@
 {% block extra_head %}
 <style>
 .d-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 4%;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.d-body{max-width:1100px;margin:0 auto;padding:24px 4%}
-.signal-card{border-radius:14px;padding:28px;border:1px solid var(--border);background:var(--surface2)}
-.module-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
-.market-btn{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;transition:all .2s;text-transform:capitalize}
-.market-btn.active,.market-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,0.05)}
+.d-body{max-width:1200px;margin:0 auto;padding:20px 4%}
+.market-btn{padding:9px 18px;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:'Lato',sans-serif;font-size:13px;font-weight:600;transition:all .2s;text-transform:capitalize}
+.market-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(91,79,207,0.06)}
 .market-btn.locked{opacity:.4;cursor:not-allowed}
+.tab-btn{padding:8px 16px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;background:transparent;color:var(--muted);transition:all .2s;font-family:'Lato',sans-serif}
+.tab-btn.active{background:var(--primary);color:#fff}
+.data-tab{display:none}.data-tab.active{display:block}
+.candle-row{display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr 1fr 40px;gap:6px;align-items:center;margin-bottom:6px}
+.candle-row input{padding:7px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);width:100%}
+.candle-row input:focus{border-color:var(--primary)}
+.result-action{font-size:56px;font-weight:800;letter-spacing:-2px;line-height:1}
+.module-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.signal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 </style>
 {% endblock %}
 {% block content %}
+
 <nav class="d-nav">
-  <div style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;color:var(--primary)">MMDE<span style="color:var(--text)"> v2</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:32px;height:32px;background:var(--primary);border-radius:7px;display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:14px;font-weight:900">M</span></div>
+    <div style="font-size:15px;font-weight:800;color:var(--text)">MMDE</div>
+  </div>
   <div style="display:flex;gap:10px;align-items:center">
-    <span style="font-size:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:var(--primary);padding:4px 10px;border-radius:6px;font-weight:600">{{ user.subscription_plan }}</span>
-    <a href="/subscription/" style="font-size:13px;color:var(--muted)">Upgrade</a>
-    <a href="/logout/" style="font-size:13px;color:var(--red);font-weight:600">Logout</a>
+    <span style="font-size:11px;background:rgba(91,79,207,0.1);border:1px solid rgba(91,79,207,0.25);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700">{{ user.subscription_plan }}</span>
+    {% if user.subscription_plan != 'ELITE' %}<a href="/subscription/" style="font-size:12px;color:var(--primary);font-weight:600">Upgrade</a>{% endif %}
+    <a href="/logout/" style="font-size:12px;color:var(--red);font-weight:700">Logout</a>
   </div>
 </nav>
 
 <div class="d-body">
-  {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+  {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:12px">{{ m }}</div>{% endfor %}{% endif %}
 
-  {% if not user.is_active_subscription %}
-  <div class="alert" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.25);color:#fbbf24;margin-bottom:20px">
-    You are on the FREE plan. <a href="/subscription/" style="color:var(--primary);font-weight:700">Upgrade to access markets →</a>
+  {% if not user.is_active_subscription and user.subscription_plan == 'FREE' %}
+  <div style="background:rgba(91,79,207,0.06);border:1px solid rgba(91,79,207,0.2);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <span style="color:var(--text);font-size:14px">You are on Free. Upgrade to access markets and run live analysis.</span>
+    <a href="/subscription/" class="btn btn-primary btn-sm">View Plans →</a>
   </div>
   {% endif %}
 
-  <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
+  <div style="display:grid;grid-template-columns:260px 1fr;gap:20px">
 
-    <!-- LEFT — Controls -->
+    <!-- LEFT PANEL -->
     <div>
+      <!-- Market selector -->
       <div class="card" style="margin-bottom:14px">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)">Select Market</h3>
-        <div style="display:flex;flex-direction:column;gap:7px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Select Market</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
           {% for market in markets %}
-          <button class="market-btn {% if market in allowed_markets or request.user.is_superuser %}{% else %}locked{% endif %}"
-            onclick="selectMarket('{{ market }}')"
-            id="mkt-{{ market }}"
-            {% if market not in allowed_markets and not request.user.is_superuser %}disabled title='Upgrade to access {{ market }}'{% endif %}>
-            <span style="text-transform:capitalize">{{ market }}</span>
-            {% if market not in allowed_markets and not user.is_superuser %}
-            <span style="font-size:10px;margin-left:4px">🔒</span>{% endif %}
-          </button>
+          {% if market in allowed_markets or user.is_superuser %}
+          <button class="market-btn {% if forloop.first %}active{% endif %}" onclick="selectMarket('{{ market }}',this)" id="mkt-{{ market }}">{{ market }}</button>
+          {% else %}
+          <button class="market-btn locked" disabled title="Upgrade to access {{ market }}">{{ market }} 🔒</button>
+          {% endif %}
           {% endfor %}
         </div>
       </div>
 
+      <!-- Symbol + interval -->
       <div class="card" style="margin-bottom:14px">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Symbol & Entry</h3>
-        <div style="margin-bottom:10px">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Symbol</label>
-          <input type="text" id="symbol-input" value="EURUSD" placeholder="EURUSD, XAUUSD..."
-            style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:14px;font-weight:600;outline:none"/>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Instrument</div>
+        <input type="text" id="symbol-input" value="EURUSD" placeholder="EURUSD, XAUUSD, BTC..."
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px"/>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div>
-            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Interval</label>
-            <select id="interval-input" style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:13px;outline:none">
-              <option value="1m">1 Min</option>
-              <option value="5m">5 Min</option>
-              <option value="15m">15 Min</option>
-              <option value="30m">30 Min</option>
-              <option value="1h" selected>1 Hour</option>
-              <option value="4h">4 Hours</option>
-              <option value="1d">Daily</option>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Interval</div>
+            <select id="interval-input" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Lato',sans-serif;outline:none;background:var(--surface);color:var(--text)">
+              <option value="M1">M1</option>
+              <option value="M5">M5</option>
+              <option value="M15">M15</option>
+              <option value="M30">M30</option>
+              <option value="H1" selected>H1</option>
+              <option value="H4">H4</option>
+              <option value="D1">Daily</option>
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Data</label>
-            <select id="data-source" style="width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:13px;outline:none">
-              <option value="live">Live Data</option>
-              <option value="demo">Demo Data</option>
-            </select>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Entry Price</div>
+            <input type="number" id="entry-price" placeholder="1.08500" step="0.00001"
+              style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text)"/>
           </div>
         </div>
-        <div style="margin-bottom:12px">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Entry Price (optional)</label>
-          <input type="number" id="entry-input" placeholder="1.08500" step="0.00001"
-            style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:14px;font-family:'Courier New',monospace;outline:none"/>
-        </div>
-        <button onclick="runAnalysis()" id="analyze-btn"
-          class="btn btn-primary" style="width:100%;padding:12px;font-size:14px">
-          ⚡ Run Analysis
-        </button>
       </div>
 
-      <!-- Module selector -->
-      <div class="card">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Modules</h3>
-        <div style="display:flex;flex-direction:column;gap:6px" id="module-list">
-          {% for mod in modules %}
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--muted)">
+      <!-- Modules -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Modules to Run</div>
+        <div style="display:flex;flex-direction:column;gap:5px" id="module-list">
+          {% for mod in 'structure,liquidity,trap_detection,price_action,imbalance,volume,momentum,volatility,session'|split:',' %}
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)">
             <input type="checkbox" value="{{ mod }}" checked style="accent-color:var(--primary)"/>
             <span style="text-transform:capitalize">{{ mod|cut:'_' }}</span>
           </label>
           {% endfor %}
         </div>
+        <button onclick="toggleAllModules()" style="margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Lato',sans-serif">Toggle All</button>
       </div>
+
+      <!-- RUN button -->
+      <button onclick="runAnalysis()" id="run-btn"
+        class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800">
+        ⚡ Run Analysis
+      </button>
     </div>
 
-    <!-- RIGHT — Output -->
+    <!-- RIGHT PANEL -->
     <div>
-      <div class="signal-card" id="result-card" style="min-height:400px;display:flex;align-items:center;justify-content:center">
-        <div style="text-align:center;color:var(--muted)">
-          <div style="font-size:36px;margin-bottom:12px">🧠</div>
-          <p style="font-size:14px">Select a market and run analysis</p>
-          <p style="font-size:12px;margin-top:6px">Paste your OHLCV data or use the demo</p>
-          <button onclick="loadDemo()" class="btn btn-outline btn-sm" style="margin-top:14px">Load Demo Data</button>
+
+      <!-- DATA INPUT TABS -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Market Data Input</div>
+          <div style="display:flex;gap:4px;background:var(--surface2);padding:3px;border-radius:8px">
+            <button class="tab-btn active" onclick="switchDataTab('manual',this)">Manual OHLCV</button>
+            <button class="tab-btn" onclick="switchDataTab('paste',this)">Paste CSV</button>
+            <button class="tab-btn" onclick="switchDataTab('live',this)">Live Fetch</button>
+          </div>
+        </div>
+
+        <!-- MANUAL OHLCV INPUT -->
+        <div class="data-tab active" id="dtab-manual">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+            Enter your candles manually. Read from MT5: right-click chart → Copy As → Table. Enter newest candle last.
+          </div>
+          <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr 1fr 40px;gap:6px;margin-bottom:6px">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Time</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Open</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">High</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Low</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Close</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Volume</div>
+            <div></div>
+          </div>
+          <div id="candle-rows">
+            <!-- Rows added by JS -->
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button onclick="addCandleRow()" style="background:rgba(91,79,207,0.08);border:1px solid var(--primary);color:var(--primary);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">+ Add Row</button>
+            <button onclick="add10Rows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Add 10 Rows</button>
+            <button onclick="clearRows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Clear</button>
+            <button onclick="loadSampleData()" style="background:rgba(22,163,74,0.08);border:1px solid #16A34A;color:#16A34A;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Load Sample (EURUSD H1)</button>
+          </div>
+          <div id="row-count" style="font-size:11px;color:var(--muted);margin-top:8px">0 candles entered</div>
+        </div>
+
+        <!-- PASTE CSV -->
+        <div class="data-tab" id="dtab-paste">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+            Paste CSV data. Format: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px">time,open,high,low,close,volume</code> — one candle per line. No header needed.
+          </div>
+          <textarea id="csv-paste" rows="12" placeholder="2025.01.15 09:00,1.08450,1.08520,1.08380,1.08490,12450
+2025.01.15 10:00,1.08490,1.08610,1.08420,1.08560,15230
+2025.01.15 11:00,1.08560,1.08590,1.08310,1.08350,18900
+..." style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);resize:vertical;line-height:1.6"></textarea>
+          <button onclick="parseCSV()" style="margin-top:8px;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Parse CSV</button>
+          <span id="csv-status" style="font-size:12px;color:var(--muted);margin-left:10px"></span>
+        </div>
+
+        <!-- LIVE FETCH -->
+        <div class="data-tab" id="dtab-live">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+            Fetch live candles automatically from Yahoo Finance. Works for most symbols without any API key.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700">Candles to fetch</div>
+              <select id="live-count" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Lato',sans-serif;outline:none;background:var(--surface);color:var(--text)">
+                <option value="30">30 candles</option>
+                <option value="50" selected>50 candles</option>
+                <option value="100">100 candles</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700">Source</div>
+              <div style="padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text);background:var(--surface2)">Yahoo Finance (free)</div>
+            </div>
+          </div>
+          <button onclick="fetchLive()" id="fetch-btn" class="btn btn-primary btn-sm" style="padding:10px 20px">
+            📡 Fetch Live Data
+          </button>
+          <div id="fetch-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
         </div>
       </div>
 
-      <!-- History -->
+      <!-- RESULT -->
+      <div class="card" id="result-card" style="min-height:200px">
+        <div style="text-align:center;padding:32px;color:var(--muted)" id="result-placeholder">
+          <div style="font-size:36px;margin-bottom:10px">🧠</div>
+          <p style="font-size:14px;font-weight:600;color:var(--text)">Ready to analyse</p>
+          <p style="font-size:13px;margin-top:6px">Enter your candle data → Select modules → Click Run Analysis</p>
+        </div>
+        <div id="result-output" style="display:none"></div>
+      </div>
+
+      <!-- HISTORY -->
       {% if history %}
       <div class="card" style="margin-top:14px">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Recent Analysis</h3>
-        <div>
-          {% for h in history %}
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-            <span style="font-family:'Courier New',monospace;color:var(--text)">{{ h.symbol }}</span>
-            <span style="color:var(--muted);text-transform:capitalize">{{ h.market }}</span>
-            {% if h.result %}
-            <span class="badge badge-{{ h.result.action|default:'NEUTRAL' }}">{{ h.result.action|default:'—' }}</span>
-            {% endif %}
-            <span style="font-size:11px;color:var(--muted)">{{ h.created_at|timesince }} ago</span>
-          </div>
-          {% endfor %}
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">Recent Analysis History</div>
+        {% for h in history %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="font-family:'Courier New',monospace;font-weight:700;color:var(--text)">{{ h.symbol }}</span>
+          <span style="color:var(--muted);text-transform:capitalize">{{ h.market }} · {{ h.interval|default:"H1" }}</span>
+          {% if h.result %}
+          {% with action=h.result.action %}
+          <span class="badge badge-{{ action }}">{{ action }}</span>
+          {% endwith %}
+          {% endif %}
+          <span style="color:var(--muted);font-size:11px">{{ h.created_at|timesince }} ago</span>
         </div>
+        {% endfor %}
       </div>
       {% endif %}
     </div>
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-let selectedMarket = '{% if allowed_markets %}{{ allowed_markets.0 }}{% else %}forex{% endif %}';
-let demoCandles = null;
+let currentMarket = '{{ allowed_markets.0|default:"forex" }}';
+let candleData = [];
 
-function selectMarket(m){
-  selectedMarket = m;
+// ─── MARKET SELECT ───
+function selectMarket(m, btn){
+  currentMarket = m;
   document.querySelectorAll('.market-btn').forEach(b=>b.classList.remove('active'));
-  const btn = document.getElementById('mkt-'+m);
-  if(btn) btn.classList.add('active');
-  // Auto-set symbol
-  const defaults = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
-  document.getElementById('symbol-input').value = defaults[m] || '';
+  btn.classList.add('active');
+  const sym = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
+  document.getElementById('symbol-input').value = sym[m] || '';
 }
 
+// ─── DATA TABS ───
+function switchDataTab(name, btn){
+  document.querySelectorAll('.data-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('dtab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── CANDLE ROW MANAGEMENT ───
+let rowCount = 0;
+
+function addCandleRow(o='',h='',l='',c='',v='',t=''){
+  rowCount++;
+  const div = document.createElement('div');
+  div.className = 'candle-row';
+  div.id = 'row-'+rowCount;
+  div.innerHTML = `
+    <input type="text" placeholder="HH:MM" value="${t}" style="font-size:11px"/>
+    <input type="number" placeholder="Open" value="${o}" step="0.00001" class="ohlcv" data-field="open"/>
+    <input type="number" placeholder="High" value="${h}" step="0.00001" class="ohlcv" data-field="high"/>
+    <input type="number" placeholder="Low" value="${l}" step="0.00001" class="ohlcv" data-field="low"/>
+    <input type="number" placeholder="Close" value="${c}" step="0.00001" class="ohlcv" data-field="close"/>
+    <input type="number" placeholder="Volume" value="${v}" class="ohlcv" data-field="volume"/>
+    <button onclick="removeRow('row-${rowCount}')" style="background:rgba(220,38,38,0.1);color:#DC2626;border:none;border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1">×</button>`;
+  document.getElementById('candle-rows').appendChild(div);
+  updateRowCount();
+}
+
+function removeRow(id){
+  const el = document.getElementById(id);
+  if(el) el.remove();
+  updateRowCount();
+}
+
+function add10Rows(){ for(let i=0;i<10;i++) addCandleRow(); }
+function clearRows(){ document.getElementById('candle-rows').innerHTML=''; rowCount=0; updateRowCount(); }
+function updateRowCount(){
+  const n = document.querySelectorAll('.candle-row').length;
+  document.getElementById('row-count').textContent = n+' candle'+(n===1?'':'s')+' entered';
+}
+
+function collectManualCandles(){
+  const rows = document.querySelectorAll('.candle-row');
+  const candles = [];
+  rows.forEach(row=>{
+    const o = parseFloat(row.querySelector('[data-field="open"]').value);
+    const h = parseFloat(row.querySelector('[data-field="high"]').value);
+    const l = parseFloat(row.querySelector('[data-field="low"]').value);
+    const c = parseFloat(row.querySelector('[data-field="close"]').value);
+    const v = parseFloat(row.querySelector('[data-field="volume"]').value) || 0;
+    const t = row.querySelector('input[placeholder="HH:MM"]').value || String(candles.length);
+    if(!isNaN(o) && !isNaN(h) && !isNaN(l) && !isNaN(c)){
+      candles.push({open:o,high:h,low:l,close:c,volume:v,timestamp:t});
+    }
+  });
+  return candles;
+}
+
+// ─── CSV PARSER ───
+function parseCSV(){
+  const raw = document.getElementById('csv-paste').value.trim();
+  if(!raw){ alert('Paste your CSV data first.'); return; }
+  const lines = raw.split('\n').filter(l=>l.trim());
+  clearRows();
+  let parsed = 0;
+  lines.forEach(line=>{
+    const parts = line.split(/[,\t ]+/).filter(p=>p);
+    if(parts.length >= 5){
+      // Support: time,open,high,low,close,volume OR open,high,low,close,volume
+      let t,o,h,l,c,v;
+      if(parts.length >= 6 && isNaN(parts[0].replace(/[.:\/\- ]/g,'').slice(0,4)===false)){
+        t=parts[0]; o=parts[1]; h=parts[2]; l=parts[3]; c=parts[4]; v=parts[5]||0;
+      } else {
+        t=parsed; o=parts[0]; h=parts[1]; l=parts[2]; c=parts[3]; v=parts[4]||0;
+      }
+      addCandleRow(
+        parseFloat(o).toFixed(5),
+        parseFloat(h).toFixed(5),
+        parseFloat(l).toFixed(5),
+        parseFloat(c).toFixed(5),
+        parseInt(v)||0, t
+      );
+      parsed++;
+    }
+  });
+  document.getElementById('csv-status').textContent = `✓ ${parsed} candles parsed`;
+  document.getElementById('csv-status').style.color = '#16A34A';
+  switchDataTab('manual', document.querySelector('.tab-btn'));
+}
+
+// ─── LIVE FETCH ───
+async function fetchLive(){
+  const symbol = document.getElementById('symbol-input').value || 'EURUSD';
+  const interval = document.getElementById('interval-input').value || 'H1';
+  const count = document.getElementById('live-count').value || 50;
+  const btn = document.getElementById('fetch-btn');
+  const status = document.getElementById('fetch-status');
+  btn.textContent = '⏳ Fetching...';
+  btn.disabled = true;
+  status.textContent = `Fetching ${count} ${interval} candles for ${symbol}...`;
+  status.style.color = 'var(--muted)';
+  try {
+    const resp = await fetch(`/api/market-data/?symbol=${symbol}&interval=${interval}&count=${count}`);
+    const data = await resp.json();
+    if(data.error){ status.textContent = '✗ '+data.error; status.style.color='var(--red)'; return; }
+    clearRows();
+    data.candles.forEach(c=>{
+      addCandleRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp||'');
+    });
+    status.textContent = `✓ ${data.candles.length} candles loaded from ${data.source}`;
+    status.style.color = '#16A34A';
+    switchDataTab('manual', document.querySelectorAll('.tab-btn')[0]);
+  } catch(e){
+    status.textContent = '✗ Fetch failed: '+e.message;
+    status.style.color = 'var(--red)';
+  } finally {
+    btn.textContent = '📡 Fetch Live Data';
+    btn.disabled = false;
+  }
+}
+
+// ─── SAMPLE DATA ───
+function loadSampleData(){
+  const sample = [
+    [1.0821,1.0834,1.0818,1.0829,12450],
+    [1.0829,1.0845,1.0825,1.0838,15230],
+    [1.0838,1.0842,1.0820,1.0823,18900],
+    [1.0823,1.0831,1.0808,1.0815,22100],
+    [1.0815,1.0828,1.0810,1.0825,16800],
+    [1.0825,1.0850,1.0822,1.0845,19500],
+    [1.0845,1.0862,1.0840,1.0858,21000],
+    [1.0858,1.0871,1.0848,1.0852,17300],
+    [1.0852,1.0858,1.0831,1.0837,25100],
+    [1.0837,1.0844,1.0821,1.0840,14200],
+    [1.0840,1.0861,1.0838,1.0857,18600],
+    [1.0857,1.0875,1.0852,1.0870,20400],
+    [1.0870,1.0882,1.0861,1.0865,16700],
+    [1.0865,1.0869,1.0840,1.0843,23900],
+    [1.0843,1.0851,1.0828,1.0848,17500],
+    [1.0848,1.0870,1.0845,1.0866,21800],
+    [1.0866,1.0880,1.0860,1.0873,19200],
+    [1.0873,1.0885,1.0865,1.0868,15600],
+    [1.0868,1.0872,1.0845,1.0850,22300],
+    [1.0850,1.0864,1.0847,1.0861,18100],
+  ];
+  clearRows();
+  sample.forEach((c,i)=>addCandleRow(c[0],c[1],c[2],c[3],c[4],`H${i+1}`));
+  document.getElementById('symbol-input').value = 'EURUSD';
+  document.getElementById('interval-input').value = 'H1';
+}
+
+// ─── MODULES ───
 function getSelectedModules(){
   return Array.from(document.querySelectorAll('#module-list input:checked')).map(i=>i.value);
 }
-
-function loadDemo(){
-  // Generate synthetic candle data for demo
-  const candles = [];
-  let price = 1.0850;
-  for(let i=0;i<30;i++){
-    const o = price;
-    const change = (Math.random()-0.48)*0.002;
-    const c = o + change;
-    const h = Math.max(o,c) + Math.random()*0.001;
-    const l = Math.min(o,c) - Math.random()*0.001;
-    const v = Math.floor(Math.random()*10000)+1000;
-    candles.push({open:+o.toFixed(5),high:+h.toFixed(5),low:+l.toFixed(5),close:+c.toFixed(5),volume:v});
-    price = c;
-  }
-  demoCandles = candles;
-  document.getElementById('symbol-input').value = 'EURUSD';
-  selectedMarket = 'forex';
-  document.getElementById('mkt-forex').classList.add('active');
-  showInfo('Demo data loaded (30 synthetic candles). Click Run Analysis.');
+function toggleAllModules(){
+  const boxes = document.querySelectorAll('#module-list input[type="checkbox"]');
+  const anyUnchecked = Array.from(boxes).some(b=>!b.checked);
+  boxes.forEach(b=>b.checked=anyUnchecked);
 }
 
-function showInfo(msg){
-  document.getElementById('result-card').innerHTML = `<div style="text-align:center;color:var(--primary);font-size:14px;padding:24px">${msg}</div>`;
-}
-
+// ─── MAIN ANALYSIS ───
 async function runAnalysis(){
-  const btn = document.getElementById('analyze-btn');
-  btn.textContent = '⏳ Analyzing...';
-  btn.disabled = true;
-
+  const candles = collectManualCandles();
+  if(candles.length < 5){
+    alert('Please enter at least 5 candles to run analysis. Use Load Sample to try it out.');
+    return;
+  }
   const symbol = document.getElementById('symbol-input').value || 'EURUSD';
-  const entry = parseFloat(document.getElementById('entry-input').value) || null;
+  const interval = document.getElementById('interval-input').value || 'H1';
+  const entry = parseFloat(document.getElementById('entry-price').value) || null;
   const modules = getSelectedModules();
-
+  const btn = document.getElementById('run-btn');
+  btn.textContent = '⏳ Analysing...';
+  btn.disabled = true;
+  document.getElementById('result-placeholder').style.display='none';
+  document.getElementById('result-output').style.display='none';
   try {
     const resp = await fetch('/api/mmde/analyze', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
       body: JSON.stringify({
-        market: selectedMarket,
+        market: currentMarket,
         symbol: symbol,
+        interval: interval,
         selected_modules: modules,
         entry_price: entry,
-        candles: demoCandles || [],
+        candles: candles,
+        use_live: false,
       })
     });
-    const data = await resp.json();
-    if(data.error){ showError(data.error); return; }
-    renderResult(data);
+    const d = await resp.json();
+    if(d.error){ showError(d.error); return; }
+    renderResult(d, symbol, interval, candles.length);
   } catch(e){
-    showError('Analysis failed: ' + e.message);
+    showError('Analysis failed: '+e.message);
   } finally {
     btn.textContent = '⚡ Run Analysis';
     btn.disabled = false;
   }
 }
 
-function renderResult(d){
-  const actionColor = {BUY:'#22d3a0',SELL:'#f43f5e',WAIT:'#fbbf24','NO TRADE':'#f43f5e'}[d.action] || '#888';
-  const confPct = Math.round((d.confidence||0)*100);
-  const mods = (d.module_signals||[]).map(s=>`
-    <div class="module-row">
-      <span style="font-family:'Courier New',monospace;color:var(--muted);font-size:12px">${s.module}</span>
-      <span class="badge badge-${s.signal}">${s.signal}</span>
-      <span style="font-size:11px;color:var(--muted)">${Math.round((s.confidence||0)*100)}%</span>
-    </div>`).join('');
+function renderResult(d, symbol, interval, dataPoints){
+  const colors = {BUY:'#15803D',SELL:'#DC2626',WAIT:'#B45309','NO TRADE':'#DC2626',NEUTRAL:'#6B6050'};
+  const bg = {BUY:'rgba(21,128,61,0.06)',SELL:'rgba(220,38,38,0.06)',WAIT:'rgba(180,83,9,0.06)','NO TRADE':'rgba(220,38,38,0.06)'};
+  const action = d.action || 'WAIT';
+  const color = colors[action] || '#555';
+  const conf = Math.round((d.confidence||0)*100);
 
-  document.getElementById('result-card').innerHTML = `
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  const mods = (d.module_signals||[]).map(s=>{
+    const mc = {BUY:'#15803D',SELL:'#DC2626',NEUTRAL:'#999','WAIT':'#B45309'}[s.signal]||'#999';
+    return `<div class="module-row">
+      <div style="display:flex;align-items:center;gap:8px;flex:1">
+        <div class="signal-dot" style="background:${mc}"></div>
+        <span style="font-weight:600;text-transform:capitalize;color:var(--text)">${s.module.replace(/_/g,' ')}</span>
+      </div>
+      <span class="badge badge-${s.signal}" style="font-size:10px">${s.signal}</span>
+      <span style="color:var(--muted);font-size:11px;width:36px;text-align:right">${Math.round((s.confidence||0)*100)}%</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('result-output').style.display = 'block';
+  document.getElementById('result-output').innerHTML = `
+    <div style="background:${bg[action]||'transparent'};border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid ${color}22">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         <div>
-          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:'Courier New',monospace">${d.symbol} · ${selectedMarket.toUpperCase()}</div>
-          <div style="font-size:52px;font-weight:700;color:${actionColor};letter-spacing:-2px;font-family:'Courier New',monospace">${d.action}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${symbol} · ${interval} · ${dataPoints} candles · ${d.market_personality?.type||'?'} market</div>
+          <div class="result-action" style="color:${color}">${action}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">${d.conflict?.reason||''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Confidence</div>
-          <div style="font-size:36px;font-weight:700;color:${actionColor}">${confPct}%</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">${d.duration_ms}ms · ${d.modules_run} modules · ${d.data_points||'?'} candles · ${d.market_data_source||'?'}</div>
+          <div style="font-size:40px;font-weight:800;color:${color}">${conf}%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${d.duration_ms}ms · ${d.modules_run} modules</div>
         </div>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Entry</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;color:var(--text)">${d.entry_zone}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Entry</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--text)">${d.entry_zone||'—'}</div>
         </div>
-        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Stop Loss</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;color:#f43f5e">${d.stop_loss}</div>
+        <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Stop Loss</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--red)">${d.stop_loss||'—'}</div>
         </div>
         ${(d.take_profit||[]).map((tp,i)=>`
-        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">TP${i+1}</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;color:#22d3a0">${tp}</div>
+        <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">TP${i+1}</div>
+          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#15803D">${tp||'—'}</div>
         </div>`).join('')}
-        <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Market Type</div>
-          <div style="font-size:13px;color:var(--primary);font-weight:600;text-transform:capitalize">${d.market_personality?.type||'—'}</div>
-        </div>
       </div>
-
-      <!-- Reasons -->
-      ${(d.reasons||[]).length ? `
-      <div style="margin-bottom:16px">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Why</div>
-        ${d.reasons.map(r=>`<div style="font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)">→ ${r}</div>`).join('')}
-      </div>` : ''}
-
-      <!-- Module signals -->
-      <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Module Signals</div>
-        ${mods}
-      </div>
-
-      ${d.warning ? `<div style="margin-top:14px;padding:10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:7px;font-size:11px;color:#fbbf24">${d.warning}</div>` : ''}
-    </div>`;
+      ${(d.reasons||[]).length?`
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">Why</div>
+        ${d.reasons.map(r=>`<div style="font-size:12px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border)22">→ ${r}</div>`).join('')}
+      </div>`:''}
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">Module Breakdown</div>
+      ${mods}
+    </div>
+    ${action!=='WAIT'&&action!=='NO TRADE'?`<div style="margin-top:14px;padding:10px 14px;background:rgba(180,83,9,0.06);border:1px solid rgba(180,83,9,0.2);border-radius:7px;font-size:11px;color:#B45309">⚠ Not financial advice. Always verify with your own analysis before executing any trade.</div>`:''}
+  `;
 }
 
 function showError(msg){
-  document.getElementById('result-card').innerHTML = `<div style="text-align:center;color:var(--red);padding:24px">${msg}</div>`;
+  document.getElementById('result-placeholder').style.display='none';
+  document.getElementById('result-output').style.display='block';
+  document.getElementById('result-output').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${msg}</div>`;
 }
+function getCookie(name){const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
 
-function getCookie(name){
-  const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():'';
-}
-
-// Init
-selectMarket(selectedMarket);
+// Init — add 5 empty rows on load
+window.addEventListener('load',()=>{ for(let i=0;i<5;i++) addCandleRow(); });
 </script>
 {% endblock %}

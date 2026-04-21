@@ -14,5 +14,7 @@ urlpatterns = [
     path('app/analysis/', gw.dashboard, name='analysis'),
     path('subscription/', gw.subscription, name='subscription'),
     path('api/mmde/analyze', gw.analyze, name='analyze'),
+    path('api/market-data/', gw.market_data_api, name='market_data_api'),
     path('payments/<int:payment_id>/approve/', pv.admin_approve, name='approve_payment'),
+    path('admin/payments/payment/<int:payment_id>/approve/', pv.admin_approve, name='approve_payment_admin'),
 ]

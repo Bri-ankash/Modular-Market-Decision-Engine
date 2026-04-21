@@ -1,8 +1,12 @@
 from django.contrib import admin
-from . import models as m
-for name in dir(m):
-    obj = getattr(m, name)
-    try:
-        if hasattr(obj, '_meta') and not obj._meta.abstract and obj._meta.app_label == 'subscriptions':
-            admin.site.register(obj)
-    except: pass
+from .models import SubscriptionPlan
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = ['key', 'display_name', 'price_usd', 'market_list', 'is_active']
+    list_editable = ['is_active']
+    ordering = ['price_usd']
+
+    def market_list(self, obj):
+        return ', '.join(obj.allowed_markets) if obj.allowed_markets else '— No markets'
+    market_list.short_description = 'Markets'

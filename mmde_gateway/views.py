@@ -103,3 +103,18 @@ def subscription(request):
         'pending': pending,
         'mpesa_till': '5359428',
     })
+
+
+@login_required(login_url='/login/')
+def market_data_api(request):
+    """Fetch live candle data for the dashboard"""
+    from mmde_engine import market_data
+    symbol = request.GET.get('symbol', 'EURUSD').upper()
+    interval = request.GET.get('interval', 'H1')
+    count = int(request.GET.get('count', 50))
+
+    try:
+        result = market_data.fetch(symbol, interval, count)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': str(e), 'candles': []}, status=400)
