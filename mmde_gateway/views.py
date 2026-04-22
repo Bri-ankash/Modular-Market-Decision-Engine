@@ -2,119 +2,206 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import json, time
+import json
 from .models import AnalysisRequest
 from mmde_engine import decision_engine
+
 
 @login_required(login_url='/login/')
 def dashboard(request):
     from django.conf import settings
     user = request.user
-    history = AnalysisRequest.objects.filter(user=user)[:20]
-    plans = settings.SUBSCRIPTION_PLANS
-    markets = settings.ALL_MARKETS
-    allowed = user.allowed_markets
+    history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
     return render(request, 'dashboard/app.html', {
         'user': user,
         'history': history,
-        'plans': plans,
-        'markets': markets,
-        'allowed_markets': allowed,
+        'markets': settings.ALL_MARKETS,
+        'allowed_markets': user.allowed_markets if user.is_active_subscription else [],
     })
+
 
 @login_required(login_url='/login/')
 def analyze(request):
-    """MMDE analysis endpoint — POST or GET"""
     from django.conf import settings
 
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-        except:
-            data = request.POST.dict()
+        except Exception:
+            return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     else:
         data = request.GET.dict()
 
-    market = data.get('market', 'forex').lower()
-    symbol = data.get('symbol', 'EURUSD').upper()
-    selected_modules = data.get('selected_modules', [])
-    entry_price = float(data.get('entry_price', 0)) or None
-    candles = data.get('candles', [])
+    market   = data.get('market', 'forex').lower()
+    symbol   = data.get('symbol', 'EURUSD').upper()
+    interval = data.get('interval', 'H1')
+    selected = data.get('selected_modules') or []
+    entry    = data.get('entry_price')
+    candles  = data.get('candles') or []
 
-    # Check access
-    if not request.user.can_access_market(market) and not request.user.is_superuser:
+    try:
+        entry = float(entry) if entry else None
+    except Exception:
+        entry = None
+
+    # Market access check
+    user = request.user
+    if not user.is_superuser:
+        if not user.is_active_subscription:
+            return JsonResponse({
+                'error': 'No active subscription. Please upgrade to access markets.',
+                'upgrade_url': '/subscription/',
+            }, status=403)
+        if market not in (user.allowed_markets or []):
+            return JsonResponse({
+                'error': f'"{market.title()}" is not included in your {user.subscription_plan} plan.',
+                'upgrade_url': '/subscription/',
+            }, status=403)
+
+    # Need at least 3 candles to do anything meaningful
+    if len(candles) < 3:
         return JsonResponse({
-            'error': f'Your plan does not include {market}.',
-            'upgrade_url': '/subscription/',
-        }, status=403)
+            'error': f'Please enter at least 3 candles. You provided {len(candles)}. Use Load Sample or Fetch Live to get started.',
+        }, status=400)
 
-    # Run engine
+    try:
+        result = decision_engine.run(
+            candles=candles,
+            symbol=symbol,
+            selected_modules=selected if selected else None,
+            entry_price=entry,
+            params={'market': market, 'interval': interval},
+        )
+        result['interval'] = interval
+        result['data_points'] = len(candles)
+
+        AnalysisRequest.objects.create(
+            user=user,
+            market=market,
+            symbol=symbol,
+            selected_modules=selected,
+            result=result,
+            duration_ms=result.get('duration_ms', 0),
+        )
+        return JsonResponse(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': f'Analysis error: {str(e)}'}, status=500)
+
+
+@login_required(login_url='/login/')
+def market_data_api(request):
+    from mmde_engine import market_data
+    symbol   = request.GET.get('symbol', 'EURUSD').upper()
+    interval = request.GET.get('interval', 'H1')
+    limit    = min(int(request.GET.get('count', 50)), 200)
+    try:
+        result = market_data.fetch(symbol, interval, limit)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': str(e), 'candles': []}, status=400)
+
+
+@csrf_exempt
+def tradingview_webhook(request):
+    """
+    TradingView Pine Script sends candles here via webhook alert.
+    Runs MMDE analysis and saves result.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+
+    secret = request.headers.get('X-MMDE-Secret', '')
+    from django.conf import settings
+    expected = getattr(settings, 'TRADINGVIEW_WEBHOOK_SECRET', '')
+    if expected and secret != expected:
+        return JsonResponse({'error': 'Invalid secret'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    candles  = data.get('candles', [])
+    symbol   = data.get('symbol', 'UNKNOWN').upper()
+    interval = data.get('interval', 'H1')
+    market   = data.get('market', 'forex').lower()
+
+    if len(candles) < 3:
+        return JsonResponse({'error': 'Need at least 3 candles'}, status=400)
+
     result = decision_engine.run(
         candles=candles,
         symbol=symbol,
-        selected_modules=selected_modules if selected_modules else None,
-        entry_price=entry_price,
-        params={'market': market},
+        selected_modules=None,
+        entry_price=data.get('entry_price'),
+        params={'market': market, 'interval': interval},
     )
-
-    # Save to history
-    AnalysisRequest.objects.create(
-        user=request.user,
-        market=market,
-        symbol=symbol,
-        selected_modules=selected_modules,
-        result=result,
-        duration_ms=result.get('duration_ms', 0),
-    )
-
+    result['source'] = 'TradingView Webhook'
     return JsonResponse(result)
 
-def landing(request):
-    from django.conf import settings
-    return render(request, 'landing/index.html', {
-        'plans': settings.SUBSCRIPTION_PLANS,
-    })
 
 @login_required(login_url='/login/')
 def subscription(request):
     from django.conf import settings
     from payments.models import Payment
+
     user = request.user
+
     if request.method == 'POST':
-        plan = request.POST.get('plan')
-        mpesa_code = request.POST.get('mpesa_code', '').strip().upper()
-        if plan in settings.SUBSCRIPTION_PLANS and plan != 'FREE':
+        plan      = request.POST.get('plan', '').upper()
+        mpesa     = request.POST.get('mpesa_code', '').strip().upper()
+        plan_data = settings.SUBSCRIPTION_PLANS.get(plan)
+
+        if not plan_data or plan == 'FREE':
+            from django.contrib import messages
+            messages.error(request, 'Please select a valid paid plan.')
+        elif not mpesa or len(mpesa) < 8:
+            from django.contrib import messages
+            messages.error(request, 'Enter a valid M-Pesa code (e.g. QKJ1234567).')
+        else:
             import uuid
             Payment.objects.create(
                 user=user,
                 plan=plan,
-                amount=settings.SUBSCRIPTION_PLANS[plan]['price'],
+                amount=float(plan_data['price']),
                 currency='USD',
                 reference=f"MMDE-{uuid.uuid4().hex[:10].upper()}",
-                mpesa_code=mpesa_code,
+                mpesa_code=mpesa,
                 status='PENDING',
             )
             from django.contrib import messages
-            messages.success(request, 'Payment submitted! Admin will activate your subscription within 24hrs.')
+            messages.success(request, f'Payment submitted! Admin will activate your {plan_data["name"]} plan within 24 hours.')
+            return redirect('/subscription/')
+
     pending = Payment.objects.filter(user=user, status='PENDING').last()
+    approved = Payment.objects.filter(user=user, status='APPROVED').last()
+
     return render(request, 'dashboard/subscription.html', {
-        'plans': settings.SUBSCRIPTION_PLANS,
-        'user': user,
-        'pending': pending,
-        'mpesa_till': '5359428',
+        'plans':       settings.SUBSCRIPTION_PLANS,
+        'user':        user,
+        'pending':     pending,
+        'approved':    approved,
+        'mpesa_till':  '5359428',
     })
 
 
-@login_required(login_url='/login/')
-def market_data_api(request):
-    """Fetch live candle data for the dashboard"""
-    from mmde_engine import market_data
-    symbol = request.GET.get('symbol', 'EURUSD').upper()
-    interval = request.GET.get('interval', 'H1')
-    count = int(request.GET.get('count', 50))
-
-    try:
-        result = market_data.fetch(symbol, interval, count)
-        return JsonResponse(result)
-    except Exception as e:
-        return JsonResponse({'error': str(e), 'candles': []}, status=400)
+def landing(request):
+    from django.conf import settings
+    modules = [
+        ('Structure',      'Higher highs/lows, BOS, CHoCH trend detection'),
+        ('Liquidity',      'Stop hunt detection, equal highs & lows'),
+        ('Trap Detection', 'Fake breakouts, bull/bear traps, long wicks'),
+        ('Price Action',   'Engulfing, hammer, shooting star, 3-candle patterns'),
+        ('Imbalance',      'Fair Value Gap (FVG) detection'),
+        ('Volume',         'Volume spikes, expansion vs contraction'),
+        ('Momentum',       'RSI divergence, ROC acceleration'),
+        ('Volatility',     'ATR compression/expansion, breakout readiness'),
+        ('Session',        'London, New York, Asian session behaviour'),
+    ]
+    return render(request, 'landing/index.html', {
+        'plans':   settings.SUBSCRIPTION_PLANS,
+        'modules': modules,
+    })

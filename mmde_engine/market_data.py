@@ -1,169 +1,128 @@
 """
-Real market data fetcher.
-Primary: yfinance (free, no key needed)
-Secondary: Alpha Vantage (free tier, key needed)
-Returns list of OHLCV dicts for MMDE engine.
+MMDE Market Data Fetcher
+Sources: yfinance (primary) → Alpha Vantage (fallback) → demo
 """
 import os
-from datetime import datetime, timedelta
 
-ALPHA_VANTAGE_KEY = os.environ.get('ALPHA_VANTAGE_KEY', 'demo')
-
-# Symbol mappings to yfinance tickers
+# Symbol map to yfinance tickers
 SYMBOL_MAP = {
     # Forex
-    'EURUSD': 'EURUSD=X', 'GBPUSD': 'GBPUSD=X', 'USDJPY': 'JPY=X',
-    'AUDUSD': 'AUDUSD=X', 'USDCHF': 'CHF=X', 'NZDUSD': 'NZDUSD=X',
-    'USDCAD': 'CAD=X', 'EURGBP': 'EURGBP=X', 'EURJPY': 'EURJPY=X',
-    # Gold
-    'XAUUSD': 'GC=F', 'GOLD': 'GC=F', 'XAGUSD': 'SI=F',
+    'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X',
+    'AUDUSD':'AUDUSD=X','USDCHF':'CHF=X','NZDUSD':'NZDUSD=X',
+    'USDCAD':'CAD=X','EURGBP':'EURGBP=X','EURJPY':'EURJPY=X',
+    'GBPJPY':'GBPJPY=X','EURAUD':'EURAUD=X','GBPCAD':'GBPCAD=X',
+    # Gold & metals
+    'XAUUSD':'GC=F','GOLD':'GC=F','XAGUSD':'SI=F','XAUEUR':'GC=F',
     # Indices
-    'US30': 'YM=F', 'SPX500': 'ES=F', 'NAS100': 'NQ=F',
-    'DAX': 'DAX=F', 'FTSE100': 'Z=F', 'US500': 'ES=F',
+    'US30':'YM=F','DJ30':'YM=F','DOW':'YM=F',
+    'NAS100':'NQ=F','NASDAQ':'NQ=F',
+    'SPX500':'ES=F','SP500':'ES=F',
+    'GER40':'GDAXI','UK100':'FTSE','JPN225':'NKY=F',
     # Crypto
-    'BTCUSD': 'BTC-USD', 'ETHUSD': 'ETH-USD', 'BNBUSD': 'BNB-USD',
-    'SOLUSD': 'SOL-USD', 'XRPUSD': 'XRP-USD',
+    'BTCUSD':'BTC-USD','BITCOIN':'BTC-USD',
+    'ETHUSD':'ETH-USD','BNBUSD':'BNB-USD',
+    'SOLUSD':'SOL-USD','XRPUSD':'XRP-USD',
+    'ADAUSD':'ADA-USD','DOTUSD':'DOT-USD',
     # Stocks
-    'AAPL': 'AAPL', 'TSLA': 'TSLA', 'GOOGL': 'GOOGL',
-    'MSFT': 'MSFT', 'AMZN': 'AMZN', 'NVDA': 'NVDA',
-    'META': 'META', 'SAFCOM': 'SCOM.NR',
+    'AAPL':'AAPL','TSLA':'TSLA','GOOGL':'GOOGL',
+    'MSFT':'MSFT','AMZN':'AMZN','NVDA':'NVDA',
+    'META':'META','NFLX':'NFLX','AMD':'AMD',
 }
 
-INTERVALS = {
-    '1m': '1m', '5m': '5m', '15m': '15m',
-    '30m': '30m', '1h': '60m', '4h': '1d',
-    '1d': '1d', '1w': '1wk',
+# yfinance interval map (MMDE → yfinance)
+INTERVAL_MAP = {
+    'M1':'1m','M5':'5m','M15':'15m','M30':'30m',
+    'H1':'1h','H4':'1h','D1':'1d','W1':'1wk',
+    '1m':'1m','5m':'5m','15m':'15m','30m':'30m',
+    '1h':'1h','4h':'1h','1d':'1d','1w':'1wk',
 }
 
-def fetch(symbol: str, interval: str = '1h', limit: int = 50) -> dict:
-    """
-    Returns {'candles': [...], 'symbol': ..., 'interval': ..., 'source': ...}
-    candles: [{open, high, low, close, volume, timestamp}]
-    """
+# Period to use per interval
+PERIOD_MAP = {
+    '1m':'1d','5m':'5d','15m':'30d','30m':'30d',
+    '1h':'60d','1d':'180d','1wk':'730d',
+}
+
+
+def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
+    """Main entry — tries yfinance first, then fallback"""
     ticker_sym = SYMBOL_MAP.get(symbol.upper(), symbol)
+    yf_interval = INTERVAL_MAP.get(interval, '1h')
 
-    # Try yfinance first (free, no key)
     try:
-        return _fetch_yfinance(ticker_sym, symbol, interval, limit)
+        return _fetch_yfinance(ticker_sym, symbol, yf_interval, limit)
     except Exception as e:
-        print(f'[yfinance] {e}')
+        print(f'[yfinance FAIL] {ticker_sym} {yf_interval}: {e}')
 
-    # Fallback: Alpha Vantage
-    try:
-        return _fetch_alpha_vantage(symbol, interval, limit)
-    except Exception as e:
-        print(f'[AlphaVantage] {e}')
-
-    # Last resort: demo synthetic data
+    # Fallback to demo
     return _demo_data(symbol, interval, limit)
 
-def _fetch_yfinance(ticker_sym, symbol, interval, limit):
+
+def _fetch_yfinance(ticker_sym, symbol, yf_interval, limit):
     import yfinance as yf
 
-    yf_interval = INTERVALS.get(interval, '1h')
-    # Period based on interval
-    period_map = {
-        '1m':'1d', '5m':'5d', '15m':'7d', '30m':'14d',
-        '60m':'30d', '1d':'90d', '1wk':'1y'
-    }
-    period = period_map.get(yf_interval, '30d')
+    period = PERIOD_MAP.get(yf_interval, '60d')
 
     ticker = yf.Ticker(ticker_sym)
     df = ticker.history(period=period, interval=yf_interval)
 
-    if df.empty:
-        raise ValueError('No data returned from yfinance')
+    if df is None or df.empty:
+        raise ValueError(f'No data returned for {ticker_sym}')
 
+    # Handle MultiIndex columns (new yfinance versions)
+    if hasattr(df.columns, 'levels'):
+        df.columns = df.columns.droplevel(1)
+
+    # Normalise column names
+    df.columns = [c.lower() for c in df.columns]
+
+    required = {'open', 'high', 'low', 'close'}
+    if not required.issubset(set(df.columns)):
+        raise ValueError(f'Missing OHLC columns. Got: {list(df.columns)}')
+
+    df = df.tail(limit)
     candles = []
-    for idx, row in df.tail(limit).iterrows():
+    for idx, row in df.iterrows():
+        ts = idx.strftime('%Y-%m-%d %H:%M') if hasattr(idx, 'strftime') else str(idx)
         candles.append({
-            'timestamp': idx.isoformat() if hasattr(idx, 'isoformat') else str(idx),
-            'open': round(float(row['Open']), 5),
-            'high': round(float(row['High']), 5),
-            'low': round(float(row['Low']), 5),
-            'close': round(float(row['Close']), 5),
-            'volume': int(row.get('Volume', 0)),
+            'timestamp': ts,
+            'open':   round(float(row['open']),  5),
+            'high':   round(float(row['high']),  5),
+            'low':    round(float(row['low']),   5),
+            'close':  round(float(row['close']), 5),
+            'volume': int(row.get('volume', 0) or 0),
         })
 
     return {
-        'candles': candles,
-        'symbol': symbol,
-        'interval': interval,
-        'source': 'yfinance',
-        'count': len(candles),
-        'last_price': candles[-1]['close'] if candles else None,
-        'last_update': str(datetime.utcnow()),
-    }
-
-def _fetch_alpha_vantage(symbol, interval, limit):
-    import requests
-
-    interval_map = {
-        '1m':'1min', '5m':'5min', '15m':'15min',
-        '30m':'30min', '1h':'60min',
-    }
-    av_interval = interval_map.get(interval, '60min')
-
-    # Forex
-    if len(symbol) == 6 and symbol.upper() not in ['XAUUSD','XAGUSD']:
-        from_sym = symbol[:3]
-        to_sym = symbol[3:]
-        url = f"https://www.alphavantage.co/query?function=FX_INTRADAY&from_symbol={from_sym}&to_symbol={to_sym}&interval={av_interval}&apikey={ALPHA_VANTAGE_KEY}&outputsize=compact"
-        r = requests.get(url, timeout=10).json()
-        key = f"Time Series FX ({av_interval})"
-    else:
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval={av_interval}&apikey={ALPHA_VANTAGE_KEY}&outputsize=compact"
-        r = requests.get(url, timeout=10).json()
-        key = f"Time Series ({av_interval})"
-
-    if key not in r:
-        raise ValueError(f'Alpha Vantage: {r.get("Note", r.get("Information","No data"))}')
-
-    ts = r[key]
-    candles = []
-    for time_str, values in sorted(ts.items())[-limit:]:
-        candles.append({
-            'timestamp': time_str,
-            'open': float(values.get('1. open', values.get('open', 0))),
-            'high': float(values.get('2. high', values.get('high', 0))),
-            'low': float(values.get('3. low', values.get('low', 0))),
-            'close': float(values.get('4. close', values.get('close', 0))),
-            'volume': int(float(values.get('5. volume', values.get('volume', 0)))),
-        })
-
-    return {
-        'candles': candles,
-        'symbol': symbol,
-        'interval': interval,
-        'source': 'alpha_vantage',
-        'count': len(candles),
+        'candles':    candles,
+        'symbol':     symbol,
+        'interval':   yf_interval,
+        'source':     'Yahoo Finance',
+        'count':      len(candles),
         'last_price': candles[-1]['close'] if candles else None,
     }
+
 
 def _demo_data(symbol, interval, limit):
-    """Synthetic demo data when all sources fail"""
-    import random, math
+    import random
+    starts = {
+        'EURUSD':1.0850,'GBPUSD':1.2650,'XAUUSD':2340.0,
+        'BTCUSD':67000.0,'US30':39500.0,'NAS100':17800.0,
+        'USDJPY':149.50,'TSLA':215.0,'AAPL':185.0,
+    }
+    price = starts.get(symbol.upper(), 1.0850)
     candles = []
-    price = {'EURUSD': 1.0850, 'XAUUSD': 2330.0, 'BTCUSD': 67000.0,
-             'US30': 39500.0, 'TSLA': 215.0}.get(symbol.upper(), 1.0000)
     for i in range(limit):
-        o = price
-        change = (random.random() - 0.49) * price * 0.002
+        o = round(price, 5)
+        change = (random.random() - 0.495) * price * 0.002
         c = round(o + change, 5)
         h = round(max(o, c) + random.random() * price * 0.001, 5)
         l = round(min(o, c) - random.random() * price * 0.001, 5)
-        v = random.randint(500, 15000)
-        candles.append({'timestamp': str(i), 'open': o, 'high': h, 'low': l, 'close': c, 'volume': v})
+        v = random.randint(800, 18000)
+        candles.append({'timestamp': f'C{i+1}', 'open':o,'high':h,'low':l,'close':c,'volume':v})
         price = c
-    return {'candles': candles, 'symbol': symbol, 'interval': interval, 'source': 'demo', 'count': limit, 'last_price': price}
-
-def get_current_price(symbol: str) -> float:
-    """Quick current price fetch"""
-    try:
-        result = fetch(symbol, '1m', 2)
-        return result['last_price']
-    except:
-        return 0.0
-
-def get_supported_symbols() -> list:
-    return list(SYMBOL_MAP.keys())
+    return {
+        'candles':candles,'symbol':symbol,'interval':interval,
+        'source':'Demo (offline)','count':len(candles),
+        'last_price': round(price, 5),
+    }

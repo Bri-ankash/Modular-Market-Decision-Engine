@@ -4,30 +4,32 @@
 <style>
 .d-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 4%;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .d-body{max-width:1200px;margin:0 auto;padding:20px 4%}
-.market-btn{padding:9px 18px;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:'Lato',sans-serif;font-size:13px;font-weight:600;transition:all .2s;text-transform:capitalize}
-.market-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(91,79,207,0.06)}
-.market-btn.locked{opacity:.4;cursor:not-allowed}
-.tab-btn{padding:8px 16px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;background:transparent;color:var(--muted);transition:all .2s;font-family:'Lato',sans-serif}
-.tab-btn.active{background:var(--primary);color:#fff}
-.data-tab{display:none}.data-tab.active{display:block}
-.candle-row{display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr 1fr 40px;gap:6px;align-items:center;margin-bottom:6px}
-.candle-row input{padding:7px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);width:100%}
-.candle-row input:focus{border-color:var(--primary)}
-.result-action{font-size:56px;font-weight:800;letter-spacing:-2px;line-height:1}
-.module-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
-.signal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mkt-btn{padding:9px 18px;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:'Lato',sans-serif;font-size:13px;font-weight:700;transition:all .2s;text-transform:capitalize;width:100%;text-align:left;margin-bottom:5px}
+.mkt-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(91,79,207,0.07)}
+.mkt-btn.locked{opacity:.4;cursor:not-allowed}
+.src-tab{padding:8px 14px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;background:transparent;color:var(--muted);transition:all .15s;font-family:'Lato',sans-serif}
+.src-tab.active{background:var(--primary);color:#fff}
+.src-panel{display:none}.src-panel.active{display:block}
+.candle-grid{display:grid;grid-template-columns:70px repeat(5,1fr) 32px;gap:5px;align-items:center;margin-bottom:5px}
+.candle-grid input{padding:6px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text);width:100%}
+.candle-grid input:focus{border-color:var(--primary);background:#fff}
+.hdr{font-size:10px;color:var(--muted);font-weight:700;padding:2px 0;text-transform:uppercase;letter-spacing:.5px}
+.del-btn{background:rgba(220,38,38,0.08);color:#DC2626;border:none;border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:15px;line-height:1;font-family:'Lato',sans-serif}
+.result-big{font-size:60px;font-weight:900;line-height:1;letter-spacing:-2px}
+.mod-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)11;font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 </style>
 {% endblock %}
 {% block content %}
 
 <nav class="d-nav">
   <div style="display:flex;align-items:center;gap:10px">
-    <div style="width:32px;height:32px;background:var(--primary);border-radius:7px;display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:14px;font-weight:900">M</span></div>
+    <div style="width:32px;height:32px;background:var(--primary);border-radius:7px;display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:15px;font-weight:900">M</span></div>
     <div style="font-size:15px;font-weight:800;color:var(--text)">MMDE</div>
   </div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <span style="font-size:11px;background:rgba(91,79,207,0.1);border:1px solid rgba(91,79,207,0.25);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700">{{ user.subscription_plan }}</span>
-    {% if user.subscription_plan != 'ELITE' %}<a href="/subscription/" style="font-size:12px;color:var(--primary);font-weight:600">Upgrade</a>{% endif %}
+  <div style="display:flex;gap:12px;align-items:center">
+    <span style="font-size:11px;background:rgba(91,79,207,0.1);border:1px solid rgba(91,79,207,0.2);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700">{{ user.subscription_plan }}{% if user.is_active_subscription %} ✓{% endif %}</span>
+    {% if user.subscription_plan != 'ELITE' %}<a href="/subscription/" style="font-size:12px;color:var(--primary);font-weight:700">Upgrade →</a>{% endif %}
     <a href="/logout/" style="font-size:12px;color:var(--red);font-weight:700">Logout</a>
   </div>
 </nav>
@@ -35,182 +37,219 @@
 <div class="d-body">
   {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:12px">{{ m }}</div>{% endfor %}{% endif %}
 
-  {% if not user.is_active_subscription and user.subscription_plan == 'FREE' %}
-  <div style="background:rgba(91,79,207,0.06);border:1px solid rgba(91,79,207,0.2);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <span style="color:var(--text);font-size:14px">You are on Free. Upgrade to access markets and run live analysis.</span>
-    <a href="/subscription/" class="btn btn-primary btn-sm">View Plans →</a>
+  {% if not user.is_active_subscription %}
+  <div style="background:rgba(91,79,207,0.05);border:1px solid rgba(91,79,207,0.2);border-radius:10px;padding:12px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <span style="font-size:13px;color:var(--text)">You are on Free — no market access. <strong>Upgrade to start analysing.</strong></span>
+    <a href="/subscription/" class="btn btn-primary btn-sm">See Plans →</a>
   </div>
   {% endif %}
 
-  <div style="display:grid;grid-template-columns:260px 1fr;gap:20px">
+  <div style="display:grid;grid-template-columns:240px 1fr;gap:18px">
 
-    <!-- LEFT PANEL -->
+    <!-- LEFT -->
     <div>
-      <!-- Market selector -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Select Market</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          {% for market in markets %}
-          {% if market in allowed_markets or user.is_superuser %}
-          <button class="market-btn {% if forloop.first %}active{% endif %}" onclick="selectMarket('{{ market }}',this)" id="mkt-{{ market }}">{{ market }}</button>
-          {% else %}
-          <button class="market-btn locked" disabled title="Upgrade to access {{ market }}">{{ market }} 🔒</button>
-          {% endif %}
-          {% endfor %}
-        </div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Market</div>
+        {% for market in markets %}
+        {% if market in allowed_markets or user.is_superuser %}
+        <button class="mkt-btn {% if forloop.first %}active{% endif %}" onclick="selectMkt('{{ market }}',this)" id="mkt-{{ market }}">
+          <span style="margin-right:6px">{% if market == 'forex' %}💱{% elif market == 'gold' %}🥇{% elif market == 'indices' %}📈{% elif market == 'crypto' %}₿{% else %}🏢{% endif %}</span>{{ market|title }}
+        </button>
+        {% else %}
+        <button class="mkt-btn locked" disabled title="Upgrade for {{ market }}">
+          <span style="margin-right:6px">🔒</span>{{ market|title }}
+        </button>
+        {% endif %}
+        {% endfor %}
       </div>
 
-      <!-- Symbol + interval -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Instrument</div>
-        <input type="text" id="symbol-input" value="EURUSD" placeholder="EURUSD, XAUUSD, BTC..."
-          style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px"/>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Instrument</div>
+        <input type="text" id="symbol" value="EURUSD" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:800;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text);margin-bottom:8px" placeholder="e.g. EURUSD"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
           <div>
-            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Interval</div>
-            <select id="interval-input" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Lato',sans-serif;outline:none;background:var(--surface);color:var(--text)">
-              <option value="M1">M1</option>
-              <option value="M5">M5</option>
-              <option value="M15">M15</option>
-              <option value="M30">M30</option>
-              <option value="H1" selected>H1</option>
-              <option value="H4">H4</option>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Timeframe</div>
+            <select id="interval" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Lato',sans-serif;outline:none;background:var(--surface2);color:var(--text)">
+              <option value="M1">M1</option><option value="M5">M5</option>
+              <option value="M15">M15</option><option value="M30">M30</option>
+              <option value="H1" selected>H1</option><option value="H4">H4</option>
               <option value="D1">Daily</option>
             </select>
           </div>
           <div>
             <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Entry Price</div>
-            <input type="number" id="entry-price" placeholder="1.08500" step="0.00001"
-              style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text)"/>
+            <input type="number" id="entry" placeholder="optional" step="0.00001" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text)"/>
           </div>
         </div>
       </div>
 
-      <!-- Modules -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Modules to Run</div>
-        <div style="display:flex;flex-direction:column;gap:5px" id="module-list">
-          {% for mod in modules %}
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)">
-            <input type="checkbox" value="{{ mod }}" checked style="accent-color:var(--primary)"/>
-            <span style="text-transform:capitalize">{{ mod|cut:'_' }}</span>
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Modules</div>
+          <button onclick="toggleMods()" style="font-size:10px;color:var(--primary);background:none;border:none;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Toggle all</button>
+        </div>
+        <div id="modlist" style="display:flex;flex-direction:column;gap:4px">
+          {% for m in 'structure,liquidity,trap_detection,price_action,imbalance,volume,momentum,volatility,session'|split:',' %}
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text)">
+            <input type="checkbox" value="{{ m }}" checked style="accent-color:var(--primary)"/>
+            <span style="text-transform:capitalize">{{ m|cut:'_' }}</span>
           </label>
           {% endfor %}
         </div>
-        <button onclick="toggleAllModules()" style="margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Lato',sans-serif">Toggle All</button>
       </div>
 
-      <!-- RUN button -->
-      <button onclick="runAnalysis()" id="run-btn"
-        class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800">
-        ⚡ Run Analysis
-      </button>
+      <button onclick="runAnalysis()" id="run-btn" class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;font-weight:800;letter-spacing:.3px">⚡ Run Analysis</button>
     </div>
 
-    <!-- RIGHT PANEL -->
+    <!-- RIGHT -->
     <div>
 
-      <!-- DATA INPUT TABS -->
+      <!-- DATA SOURCE TABS -->
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">Market Data Input</div>
-          <div style="display:flex;gap:4px;background:var(--surface2);padding:3px;border-radius:8px">
-            <button class="tab-btn active" onclick="switchDataTab('manual',this)">Manual OHLCV</button>
-            <button class="tab-btn" onclick="switchDataTab('paste',this)">Paste CSV</button>
-            <button class="tab-btn" onclick="switchDataTab('live',this)">Live Fetch</button>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Feed Market Data</div>
+          <div style="display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border)">
+            <button class="src-tab active" onclick="switchSrc('manual',this)">✏ Manual</button>
+            <button class="src-tab" onclick="switchSrc('csv',this)">📋 Paste CSV</button>
+            <button class="src-tab" onclick="switchSrc('live',this)">📡 Live</button>
+            <button class="src-tab" onclick="switchSrc('tv',this)">📺 TradingView</button>
           </div>
         </div>
 
-        <!-- MANUAL OHLCV INPUT -->
-        <div class="data-tab active" id="dtab-manual">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
-            Enter your candles manually. Read from MT5: right-click chart → Copy As → Table. Enter newest candle last.
+        <!-- MANUAL -->
+        <div class="src-panel active" id="src-manual">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
+            💡 <strong>From MT5:</strong> Right-click chart → Toolbox → History tab. Copy the OHLCV values row by row.<br/>
+            Enter oldest candle first, newest last. Minimum 3 candles, recommended 20+.
           </div>
-          <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr 1fr 40px;gap:6px;margin-bottom:6px">
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Time</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Open</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">High</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Low</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Close</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700;padding:3px 0">Volume</div>
-            <div></div>
+          <div class="candle-grid" style="margin-bottom:4px">
+            <div class="hdr">Label</div><div class="hdr">Open</div><div class="hdr">High</div><div class="hdr">Low</div><div class="hdr">Close</div><div class="hdr">Volume</div><div></div>
           </div>
-          <div id="candle-rows">
-            <!-- Rows added by JS -->
-          </div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button onclick="addCandleRow()" style="background:rgba(91,79,207,0.08);border:1px solid var(--primary);color:var(--primary);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">+ Add Row</button>
-            <button onclick="add10Rows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Add 10 Rows</button>
+          <div id="candle-rows"></div>
+          <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
+            <button onclick="addRow()" style="background:rgba(91,79,207,0.08);border:1px solid var(--primary);color:var(--primary);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">+ Row</button>
+            <button onclick="addRows(10)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">+ 10 Rows</button>
             <button onclick="clearRows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Clear</button>
-            <button onclick="loadSampleData()" style="background:rgba(22,163,74,0.08);border:1px solid #16A34A;color:#16A34A;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Load Sample (EURUSD H1)</button>
+            <button onclick="loadSample()" style="background:rgba(22,163,74,0.08);border:1px solid #16A34A;color:#16A34A;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Load EURUSD Sample</button>
           </div>
-          <div id="row-count" style="font-size:11px;color:var(--muted);margin-top:8px">0 candles entered</div>
+          <div id="row-count" style="font-size:11px;color:var(--muted);margin-top:7px">0 candles</div>
         </div>
 
-        <!-- PASTE CSV -->
-        <div class="data-tab" id="dtab-paste">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
-            Paste CSV data. Format: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px">time,open,high,low,close,volume</code> — one candle per line. No header needed.
+        <!-- CSV PASTE -->
+        <div class="src-panel" id="src-csv">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
+            💡 <strong>From TradingView:</strong> Open chart → right-click → Export Chart Data → CSV. Paste below.<br/>
+            <strong>From MT5:</strong> History tab → select rows → Ctrl+C → paste.<br/>
+            Format (any): <code style="background:var(--border);padding:1px 5px;border-radius:3px">time, open, high, low, close, volume</code>
           </div>
-          <textarea id="csv-paste" rows="12" placeholder="2025.01.15 09:00,1.08450,1.08520,1.08380,1.08490,12450
-2025.01.15 10:00,1.08490,1.08610,1.08420,1.08560,15230
-2025.01.15 11:00,1.08560,1.08590,1.08310,1.08350,18900
-..." style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface);color:var(--text);resize:vertical;line-height:1.6"></textarea>
-          <button onclick="parseCSV()" style="margin-top:8px;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Parse CSV</button>
-          <span id="csv-status" style="font-size:12px;color:var(--muted);margin-left:10px"></span>
+          <textarea id="csv-area" rows="10" placeholder="2025.01.15 09:00, 1.08450, 1.08520, 1.08380, 1.08490, 12450
+2025.01.15 10:00, 1.08490, 1.08610, 1.08420, 1.08560, 15230
+..." style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text);resize:vertical;line-height:1.7"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button onclick="parseCSV()" style="background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Parse & Load</button>
+            <span id="csv-msg" style="font-size:12px;color:var(--muted)"></span>
+          </div>
         </div>
 
         <!-- LIVE FETCH -->
-        <div class="data-tab" id="dtab-live">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-            Fetch live candles automatically from Yahoo Finance. Works for most symbols without any API key.
+        <div class="src-panel" id="src-live">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
+            📡 Pulls real candles automatically from <strong>Yahoo Finance</strong> (free, no API key needed).<br/>
+            Works for: Forex pairs, Gold, Indices, Crypto, Stocks. Uses the symbol and timeframe you set on the left.
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700">Candles to fetch</div>
-              <select id="live-count" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Lato',sans-serif;outline:none;background:var(--surface);color:var(--text)">
-                <option value="30">30 candles</option>
-                <option value="50" selected>50 candles</option>
-                <option value="100">100 candles</option>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Candles to fetch</div>
+              <select id="live-count" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Lato',sans-serif;outline:none;background:var(--surface2);color:var(--text)">
+                <option value="20">20</option><option value="30">30</option>
+                <option value="50" selected>50</option><option value="100">100</option>
               </select>
             </div>
-            <div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700">Source</div>
-              <div style="padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text);background:var(--surface2)">Yahoo Finance (free)</div>
-            </div>
+            <button onclick="fetchLive()" id="fetch-btn" class="btn btn-primary" style="padding:10px 22px">Fetch Live Data</button>
           </div>
-          <button onclick="fetchLive()" id="fetch-btn" class="btn btn-primary btn-sm" style="padding:10px 20px">
-            📡 Fetch Live Data
-          </button>
-          <div id="fetch-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+          <div id="fetch-msg" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
+        </div>
+
+        <!-- TRADINGVIEW TAB -->
+        <div class="src-panel" id="src-tv">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;background:var(--surface2);padding:12px 14px;border-radius:8px;border:1px solid var(--border)">
+            📺 <strong>Two ways to use TradingView with MMDE:</strong><br/><br/>
+            <strong>Option 1 — Export CSV (quickest):</strong><br/>
+            1. Open your TradingView chart<br/>
+            2. Right-click on the chart → <strong>Export Chart Data</strong><br/>
+            3. Save the CSV → open it → copy all rows<br/>
+            4. Switch to the <strong>Paste CSV tab</strong> → paste → Parse & Load<br/><br/>
+            <strong>Option 2 — Webhook (automatic, real-time):</strong><br/>
+            TradingView sends candles to MMDE every time a candle closes.<br/>
+            Add this Pine Script to your chart:
+          </div>
+          <div style="background:#1e1e2e;border-radius:10px;padding:16px;font-family:'Courier New',monospace;font-size:11px;color:#cdd6f4;line-height:2;overflow-x:auto;white-space:pre;margin-bottom:12px">//@version=5
+indicator("MMDE Data Sender", overlay=true)
+
+// Settings
+mmde_url = input.string("https://your-mmde-url.onrender.com/api/tradingview/webhook/", "MMDE Webhook URL")
+secret   = input.string("mmde-tv-secret-2026", "MMDE Secret")
+n_candles = input.int(30, "Candles to send", minval=5, maxval=100)
+
+// Build JSON with last N candles
+build_json() =>
+    result = '{"symbol":"' + syminfo.ticker + '",'
+    result += '"interval":"' + timeframe.period + '",'
+    result += '"market":"forex",'
+    result += '"candles":['
+    for i = n_candles - 1 to 0
+        o = str.tostring(open[i],  "#.#####")
+        h = str.tostring(high[i],  "#.#####")
+        l = str.tostring(low[i],   "#.#####")
+        c = str.tostring(close[i], "#.#####")
+        v = str.tostring(volume[i],"#")
+        result += '{"open":' + o + ',"high":' + h
+        result += ',"low":'  + l + ',"close":' + c
+        result += ',"volume":' + v + '}'
+        if i > 0
+            result += ','
+    result += ']}'
+    result
+
+// Alert on every bar close
+if barstate.isconfirmed
+    alert(build_json(), alert.freq_once_per_bar_close)</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7">
+            <strong>To set up the webhook alert:</strong><br/>
+            1. Add the script above to your chart<br/>
+            2. Click the alarm clock (Alerts) → Create Alert<br/>
+            3. Condition: MMDE Data Sender → Any alert() function call<br/>
+            4. Notifications: tick <strong>Webhook URL</strong><br/>
+            5. Paste: <code style="background:var(--border);padding:2px 6px;border-radius:4px">https://your-mmde-url.onrender.com/api/tradingview/webhook/</code><br/>
+            6. Save → MMDE auto-analyses every new candle
+          </p>
         </div>
       </div>
 
       <!-- RESULT -->
-      <div class="card" id="result-card" style="min-height:200px">
-        <div style="text-align:center;padding:32px;color:var(--muted)" id="result-placeholder">
-          <div style="font-size:36px;margin-bottom:10px">🧠</div>
-          <p style="font-size:14px;font-weight:600;color:var(--text)">Ready to analyse</p>
-          <p style="font-size:13px;margin-top:6px">Enter your candle data → Select modules → Click Run Analysis</p>
+      <div class="card" id="result-card">
+        <div id="result-placeholder" style="text-align:center;padding:36px;color:var(--muted)">
+          <div style="font-size:44px;margin-bottom:10px">🧠</div>
+          <p style="font-size:14px;font-weight:700;color:var(--text)">Ready to analyse</p>
+          <p style="font-size:13px;margin-top:6px;line-height:1.7">
+            1. Set market & symbol on the left<br/>
+            2. Enter candles (manual, paste or fetch live)<br/>
+            3. Hit ⚡ Run Analysis
+          </p>
         </div>
-        <div id="result-output" style="display:none"></div>
+        <div id="result-out" style="display:none"></div>
       </div>
 
       <!-- HISTORY -->
       {% if history %}
       <div class="card" style="margin-top:14px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">Recent Analysis History</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">History</div>
         {% for h in history %}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap;gap:4px">
           <span style="font-family:'Courier New',monospace;font-weight:700;color:var(--text)">{{ h.symbol }}</span>
-          <span style="color:var(--muted);text-transform:capitalize">{{ h.market }} · {{ h.interval|default:"H1" }}</span>
-          {% if h.result %}
-          {% with action=h.result.action %}
-          <span class="badge badge-{{ action }}">{{ action }}</span>
-          {% endwith %}
-          {% endif %}
-          <span style="color:var(--muted);font-size:11px">{{ h.created_at|timesince }} ago</span>
+          <span style="color:var(--muted);text-transform:capitalize">{{ h.market }}</span>
+          {% if h.result %}<span class="badge badge-{{ h.result.action|default:'NEUTRAL' }}">{{ h.result.action|default:'—' }}</span>{% endif %}
+          <span style="color:var(--muted);font-size:10px">{{ h.created_at|timesince }} ago</span>
         </div>
         {% endfor %}
       </div>
@@ -222,291 +261,288 @@
 
 {% block extra_js %}
 <script>
-let currentMarket = '{{ allowed_markets.0|default:"forex" }}';
-let candleData = [];
+let currentMkt = '{{ allowed_markets.0|default:"forex" }}';
+let rowId = 0;
 
-// ─── MARKET SELECT ───
-function selectMarket(m, btn){
-  currentMarket = m;
-  document.querySelectorAll('.market-btn').forEach(b=>b.classList.remove('active'));
+// ── MARKET ──
+function selectMkt(m, btn){
+  currentMkt = m;
+  document.querySelectorAll('.mkt-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const sym = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
-  document.getElementById('symbol-input').value = sym[m] || '';
+  document.getElementById('symbol').value = sym[m] || '';
 }
 
-// ─── DATA TABS ───
-function switchDataTab(name, btn){
-  document.querySelectorAll('.data-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('dtab-'+name).classList.add('active');
+// ── SOURCE TABS ──
+function switchSrc(name, btn){
+  document.querySelectorAll('.src-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.src-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('src-'+name).classList.add('active');
   btn.classList.add('active');
 }
 
-// ─── CANDLE ROW MANAGEMENT ───
-let rowCount = 0;
-
-function addCandleRow(o='',h='',l='',c='',v='',t=''){
-  rowCount++;
+// ── CANDLE ROWS ──
+function addRow(o='',h='',l='',c='',v='',t=''){
+  rowId++;
+  const id = 'r'+rowId;
   const div = document.createElement('div');
-  div.className = 'candle-row';
-  div.id = 'row-'+rowCount;
+  div.className = 'candle-grid';
+  div.id = id;
   div.innerHTML = `
-    <input type="text" placeholder="HH:MM" value="${t}" style="font-size:11px"/>
-    <input type="number" placeholder="Open" value="${o}" step="0.00001" class="ohlcv" data-field="open"/>
-    <input type="number" placeholder="High" value="${h}" step="0.00001" class="ohlcv" data-field="high"/>
-    <input type="number" placeholder="Low" value="${l}" step="0.00001" class="ohlcv" data-field="low"/>
-    <input type="number" placeholder="Close" value="${c}" step="0.00001" class="ohlcv" data-field="close"/>
-    <input type="number" placeholder="Volume" value="${v}" class="ohlcv" data-field="volume"/>
-    <button onclick="removeRow('row-${rowCount}')" style="background:rgba(220,38,38,0.1);color:#DC2626;border:none;border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1">×</button>`;
+    <input type="text" placeholder="T${rowId}" value="${t}" style="font-size:11px;color:var(--muted)"/>
+    <input type="number" placeholder="Open"   value="${o}" step="any" oninput="updateCount()"/>
+    <input type="number" placeholder="High"   value="${h}" step="any"/>
+    <input type="number" placeholder="Low"    value="${l}" step="any"/>
+    <input type="number" placeholder="Close"  value="${c}" step="any"/>
+    <input type="number" placeholder="Volume" value="${v}" step="any"/>
+    <button class="del-btn" onclick="document.getElementById('${id}').remove();updateCount()">×</button>`;
   document.getElementById('candle-rows').appendChild(div);
-  updateRowCount();
+  updateCount();
 }
 
-function removeRow(id){
-  const el = document.getElementById(id);
-  if(el) el.remove();
-  updateRowCount();
+function addRows(n){ for(let i=0;i<n;i++) addRow(); }
+function clearRows(){ document.getElementById('candle-rows').innerHTML=''; rowId=0; updateCount(); }
+function updateCount(){
+  const n = document.querySelectorAll('.candle-grid').length;
+  const el = document.getElementById('row-count');
+  el.textContent = n + ' candle' + (n!==1?'s':'');
+  el.style.color = n>=3 ? 'var(--green)' : 'var(--red)';
 }
 
-function add10Rows(){ for(let i=0;i<10;i++) addCandleRow(); }
-function clearRows(){ document.getElementById('candle-rows').innerHTML=''; rowCount=0; updateRowCount(); }
-function updateRowCount(){
-  const n = document.querySelectorAll('.candle-row').length;
-  document.getElementById('row-count').textContent = n+' candle'+(n===1?'':'s')+' entered';
-}
-
-function collectManualCandles(){
-  const rows = document.querySelectorAll('.candle-row');
-  const candles = [];
+function getCandles(){
+  const rows = document.querySelectorAll('.candle-grid');
+  const out = [];
   rows.forEach(row=>{
-    const o = parseFloat(row.querySelector('[data-field="open"]').value);
-    const h = parseFloat(row.querySelector('[data-field="high"]').value);
-    const l = parseFloat(row.querySelector('[data-field="low"]').value);
-    const c = parseFloat(row.querySelector('[data-field="close"]').value);
-    const v = parseFloat(row.querySelector('[data-field="volume"]').value) || 0;
-    const t = row.querySelector('input[placeholder="HH:MM"]').value || String(candles.length);
-    if(!isNaN(o) && !isNaN(h) && !isNaN(l) && !isNaN(c)){
-      candles.push({open:o,high:h,low:l,close:c,volume:v,timestamp:t});
-    }
+    const ins = row.querySelectorAll('input');
+    const t = ins[0].value || String(out.length+1);
+    const o = parseFloat(ins[1].value);
+    const h = parseFloat(ins[2].value);
+    const l = parseFloat(ins[3].value);
+    const c = parseFloat(ins[4].value);
+    const v = parseFloat(ins[5].value)||0;
+    if(!isNaN(o)&&!isNaN(h)&&!isNaN(l)&&!isNaN(c))
+      out.push({timestamp:t,open:o,high:h,low:l,close:c,volume:v});
   });
-  return candles;
+  return out;
 }
 
-// ─── CSV PARSER ───
+// ── CSV PARSER ──
 function parseCSV(){
-  const raw = document.getElementById('csv-paste').value.trim();
-  if(!raw){ alert('Paste your CSV data first.'); return; }
-  const lines = raw.split('\n').filter(l=>l.trim());
+  const raw = document.getElementById('csv-area').value.trim();
+  if(!raw){ alert('Paste CSV data first'); return; }
+  const lines = raw.split('\n').filter(l=>l.trim()&&!l.startsWith('#'));
   clearRows();
-  let parsed = 0;
+  let ok=0, skip=0;
   lines.forEach(line=>{
-    const parts = line.split(/[,\t ]+/).filter(p=>p);
-    if(parts.length >= 5){
-      // Support: time,open,high,low,close,volume OR open,high,low,close,volume
-      let t,o,h,l,c,v;
-      if(parts.length >= 6 && isNaN(parts[0].replace(/[.:\/\- ]/g,'').slice(0,4)===false)){
-        t=parts[0]; o=parts[1]; h=parts[2]; l=parts[3]; c=parts[4]; v=parts[5]||0;
-      } else {
-        t=parsed; o=parts[0]; h=parts[1]; l=parts[2]; c=parts[3]; v=parts[4]||0;
-      }
-      addCandleRow(
-        parseFloat(o).toFixed(5),
-        parseFloat(h).toFixed(5),
-        parseFloat(l).toFixed(5),
-        parseFloat(c).toFixed(5),
-        parseInt(v)||0, t
-      );
-      parsed++;
-    }
+    // Split by comma, tab, or semicolon
+    const parts = line.split(/[,;\t]+/).map(p=>p.trim()).filter(p=>p);
+    // Find numeric columns
+    const nums = parts.filter(p=>!isNaN(p.replace(/[-:.]/g,'').replace(/[\/\s]/g,'')));
+    // Need at least 4 numbers (OHLC)
+    if(parts.length>=5){
+      // Detect if first col is date/time (non-numeric start)
+      let offset = 0;
+      if(isNaN(parts[0].replace(/[-:.\/ ]/g,''))) offset=1;
+      if(isNaN(parts[offset])) offset++;
+      const o=parts[offset],h=parts[offset+1],l=parts[offset+2],c=parts[offset+3],v=parts[offset+4]||0;
+      if(!isNaN(o)&&!isNaN(h)&&!isNaN(l)&&!isNaN(c)){
+        addRow(parseFloat(o).toFixed(5),parseFloat(h).toFixed(5),parseFloat(l).toFixed(5),parseFloat(c).toFixed(5),parseInt(v)||0, parts[0]);
+        ok++;
+      } else skip++;
+    } else skip++;
   });
-  document.getElementById('csv-status').textContent = `✓ ${parsed} candles parsed`;
-  document.getElementById('csv-status').style.color = '#16A34A';
-  switchDataTab('manual', document.querySelector('.tab-btn'));
+  const msg = document.getElementById('csv-msg');
+  msg.textContent = `✓ ${ok} candles loaded${skip?' ('+skip+' skipped)':''}`;
+  msg.style.color = ok>0?'#16A34A':'#DC2626';
+  if(ok>0) switchSrc('manual', document.querySelector('.src-tab'));
 }
 
-// ─── LIVE FETCH ───
+// ── LIVE FETCH ──
 async function fetchLive(){
-  const symbol = document.getElementById('symbol-input').value || 'EURUSD';
-  const interval = document.getElementById('interval-input').value || 'H1';
-  const count = document.getElementById('live-count').value || 50;
-  const btn = document.getElementById('fetch-btn');
-  const status = document.getElementById('fetch-status');
-  btn.textContent = '⏳ Fetching...';
-  btn.disabled = true;
-  status.textContent = `Fetching ${count} ${interval} candles for ${symbol}...`;
-  status.style.color = 'var(--muted)';
+  const symbol   = document.getElementById('symbol').value||'EURUSD';
+  const interval = document.getElementById('interval').value||'H1';
+  const count    = document.getElementById('live-count').value||50;
+  const btn      = document.getElementById('fetch-btn');
+  const msg      = document.getElementById('fetch-msg');
+
+  btn.textContent='Fetching...'; btn.disabled=true;
+  msg.textContent=`Fetching ${count} × ${interval} candles for ${symbol}...`; msg.style.color='var(--muted)';
+
   try {
-    const resp = await fetch(`/api/market-data/?symbol=${symbol}&interval=${interval}&count=${count}`);
-    const data = await resp.json();
-    if(data.error){ status.textContent = '✗ '+data.error; status.style.color='var(--red)'; return; }
+    const r = await fetch(`/api/market-data/?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&count=${count}`);
+    const d = await r.json();
+    if(d.error){ msg.textContent='✗ '+d.error; msg.style.color='var(--red)'; return; }
     clearRows();
-    data.candles.forEach(c=>{
-      addCandleRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp||'');
-    });
-    status.textContent = `✓ ${data.candles.length} candles loaded from ${data.source}`;
-    status.style.color = '#16A34A';
-    switchDataTab('manual', document.querySelectorAll('.tab-btn')[0]);
+    d.candles.forEach(c=>addRow(c.open,c.high,c.low,c.close,c.volume,c.timestamp||''));
+    msg.textContent=`✓ ${d.candles.length} candles from ${d.source}`;
+    msg.style.color='#16A34A';
+    switchSrc('manual', document.querySelector('.src-tab'));
   } catch(e){
-    status.textContent = '✗ Fetch failed: '+e.message;
-    status.style.color = 'var(--red)';
+    msg.textContent='✗ '+e.message; msg.style.color='var(--red)';
   } finally {
-    btn.textContent = '📡 Fetch Live Data';
-    btn.disabled = false;
+    btn.textContent='Fetch Live Data'; btn.disabled=false;
   }
 }
 
-// ─── SAMPLE DATA ───
-function loadSampleData(){
-  const sample = [
-    [1.0821,1.0834,1.0818,1.0829,12450],
-    [1.0829,1.0845,1.0825,1.0838,15230],
-    [1.0838,1.0842,1.0820,1.0823,18900],
-    [1.0823,1.0831,1.0808,1.0815,22100],
-    [1.0815,1.0828,1.0810,1.0825,16800],
-    [1.0825,1.0850,1.0822,1.0845,19500],
-    [1.0845,1.0862,1.0840,1.0858,21000],
-    [1.0858,1.0871,1.0848,1.0852,17300],
-    [1.0852,1.0858,1.0831,1.0837,25100],
-    [1.0837,1.0844,1.0821,1.0840,14200],
-    [1.0840,1.0861,1.0838,1.0857,18600],
-    [1.0857,1.0875,1.0852,1.0870,20400],
-    [1.0870,1.0882,1.0861,1.0865,16700],
-    [1.0865,1.0869,1.0840,1.0843,23900],
-    [1.0843,1.0851,1.0828,1.0848,17500],
-    [1.0848,1.0870,1.0845,1.0866,21800],
-    [1.0866,1.0880,1.0860,1.0873,19200],
-    [1.0873,1.0885,1.0865,1.0868,15600],
-    [1.0868,1.0872,1.0845,1.0850,22300],
-    [1.0850,1.0864,1.0847,1.0861,18100],
+// ── MODULES ──
+function toggleMods(){
+  const boxes=document.querySelectorAll('#modlist input');
+  const any=Array.from(boxes).some(b=>!b.checked);
+  boxes.forEach(b=>b.checked=any);
+}
+function getMods(){ return Array.from(document.querySelectorAll('#modlist input:checked')).map(i=>i.value); }
+
+// ── SAMPLE DATA (EURUSD H1) ──
+function loadSample(){
+  const data=[
+    [1.08210,1.08340,1.08180,1.08290,12450],
+    [1.08290,1.08450,1.08250,1.08380,15230],
+    [1.08380,1.08420,1.08200,1.08230,18900],
+    [1.08230,1.08310,1.08080,1.08150,22100],
+    [1.08150,1.08280,1.08100,1.08250,16800],
+    [1.08250,1.08500,1.08220,1.08450,19500],
+    [1.08450,1.08620,1.08400,1.08580,21000],
+    [1.08580,1.08710,1.08480,1.08520,17300],
+    [1.08520,1.08580,1.08310,1.08370,25100],
+    [1.08370,1.08440,1.08210,1.08400,14200],
+    [1.08400,1.08610,1.08380,1.08570,18600],
+    [1.08570,1.08750,1.08520,1.08700,20400],
+    [1.08700,1.08820,1.08610,1.08650,16700],
+    [1.08650,1.08690,1.08400,1.08430,23900],
+    [1.08430,1.08510,1.08280,1.08480,17500],
+    [1.08480,1.08700,1.08450,1.08660,21800],
+    [1.08660,1.08800,1.08600,1.08730,19200],
+    [1.08730,1.08850,1.08650,1.08680,15600],
+    [1.08680,1.08720,1.08450,1.08500,22300],
+    [1.08500,1.08640,1.08470,1.08610,18100],
   ];
   clearRows();
-  sample.forEach((c,i)=>addCandleRow(c[0],c[1],c[2],c[3],c[4],`H${i+1}`));
-  document.getElementById('symbol-input').value = 'EURUSD';
-  document.getElementById('interval-input').value = 'H1';
+  data.forEach((c,i)=>addRow(c[0],c[1],c[2],c[3],c[4],`H${i+1}`));
+  document.getElementById('symbol').value='EURUSD';
+  document.getElementById('interval').value='H1';
 }
 
-// ─── MODULES ───
-function getSelectedModules(){
-  return Array.from(document.querySelectorAll('#module-list input:checked')).map(i=>i.value);
-}
-function toggleAllModules(){
-  const boxes = document.querySelectorAll('#module-list input[type="checkbox"]');
-  const anyUnchecked = Array.from(boxes).some(b=>!b.checked);
-  boxes.forEach(b=>b.checked=anyUnchecked);
-}
-
-// ─── MAIN ANALYSIS ───
+// ── ANALYSIS ──
 async function runAnalysis(){
-  const candles = collectManualCandles();
-  if(candles.length < 5){
-    alert('Please enter at least 5 candles to run analysis. Use Load Sample to try it out.');
+  const candles = getCandles();
+  if(candles.length<3){
+    showResult({error:`You have ${candles.length} candle(s). Need at least 3. Try Load Sample to get started.`});
     return;
   }
-  const symbol = document.getElementById('symbol-input').value || 'EURUSD';
-  const interval = document.getElementById('interval-input').value || 'H1';
-  const entry = parseFloat(document.getElementById('entry-price').value) || null;
-  const modules = getSelectedModules();
-  const btn = document.getElementById('run-btn');
-  btn.textContent = '⏳ Analysing...';
-  btn.disabled = true;
+  const btn=document.getElementById('run-btn');
+  btn.textContent='⏳ Analysing...'; btn.disabled=true;
   document.getElementById('result-placeholder').style.display='none';
-  document.getElementById('result-output').style.display='none';
-  try {
-    const resp = await fetch('/api/mmde/analyze', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-      body: JSON.stringify({
-        market: currentMarket,
-        symbol: symbol,
-        interval: interval,
-        selected_modules: modules,
-        entry_price: entry,
-        candles: candles,
-        use_live: false,
+  document.getElementById('result-out').style.display='none';
+
+  try{
+    const r=await fetch('/api/mmde/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({
+        market:   currentMkt,
+        symbol:   document.getElementById('symbol').value||'EURUSD',
+        interval: document.getElementById('interval').value||'H1',
+        selected_modules: getMods(),
+        entry_price: parseFloat(document.getElementById('entry').value)||null,
+        candles:  candles,
       })
     });
-    const d = await resp.json();
-    if(d.error){ showError(d.error); return; }
-    renderResult(d, symbol, interval, candles.length);
-  } catch(e){
-    showError('Analysis failed: '+e.message);
-  } finally {
-    btn.textContent = '⚡ Run Analysis';
-    btn.disabled = false;
+    const d=await r.json();
+    showResult(d);
+  }catch(e){
+    showResult({error:'Network error: '+e.message});
+  }finally{
+    btn.textContent='⚡ Run Analysis'; btn.disabled=false;
   }
 }
 
-function renderResult(d, symbol, interval, dataPoints){
-  const colors = {BUY:'#15803D',SELL:'#DC2626',WAIT:'#B45309','NO TRADE':'#DC2626',NEUTRAL:'#6B6050'};
-  const bg = {BUY:'rgba(21,128,61,0.06)',SELL:'rgba(220,38,38,0.06)',WAIT:'rgba(180,83,9,0.06)','NO TRADE':'rgba(220,38,38,0.06)'};
-  const action = d.action || 'WAIT';
-  const color = colors[action] || '#555';
-  const conf = Math.round((d.confidence||0)*100);
+// ── RENDER RESULT ──
+function showResult(d){
+  document.getElementById('result-placeholder').style.display='none';
+  const out=document.getElementById('result-out');
+  out.style.display='block';
 
-  const mods = (d.module_signals||[]).map(s=>{
-    const mc = {BUY:'#15803D',SELL:'#DC2626',NEUTRAL:'#999','WAIT':'#B45309'}[s.signal]||'#999';
-    return `<div class="module-row">
-      <div style="display:flex;align-items:center;gap:8px;flex:1">
-        <div class="signal-dot" style="background:${mc}"></div>
-        <span style="font-weight:600;text-transform:capitalize;color:var(--text)">${s.module.replace(/_/g,' ')}</span>
+  if(d.error){
+    out.innerHTML=`<div style="color:var(--red);padding:20px;text-align:center;font-size:14px">⚠ ${d.error}</div>`;
+    return;
+  }
+
+  const action=d.action||'WAIT';
+  const col={BUY:'#15803D',SELL:'#DC2626',WAIT:'#B45309','NO TRADE':'#DC2626',NEUTRAL:'#6B6050'}[action]||'#555';
+  const bg={BUY:'rgba(21,128,61,0.05)',SELL:'rgba(220,38,38,0.05)',WAIT:'rgba(180,83,9,0.05)','NO TRADE':'rgba(220,38,38,0.05)'}[action]||'';
+  const conf=Math.round((d.confidence||0)*100);
+
+  const mods=(d.module_signals||[]).map(s=>{
+    const mc={BUY:'#15803D',SELL:'#DC2626',NEUTRAL:'#9CA3AF',WAIT:'#B45309'}[s.signal]||'#999';
+    const str=s.strength||'';
+    return `<div class="mod-row">
+      <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:0">
+        <div class="dot" style="background:${mc}"></div>
+        <span style="font-weight:700;color:var(--text);text-transform:capitalize;font-size:12px">${s.module.replace(/_/g,' ')}</span>
       </div>
-      <span class="badge badge-${s.signal}" style="font-size:10px">${s.signal}</span>
-      <span style="color:var(--muted);font-size:11px;width:36px;text-align:right">${Math.round((s.confidence||0)*100)}%</span>
-    </div>`;
+      <span style="font-size:10px;color:var(--muted);margin-right:8px;font-style:italic">${str}</span>
+      <span class="badge badge-${s.signal}" style="font-size:10px;margin-right:6px">${s.signal}</span>
+      <span style="color:var(--muted);font-size:11px;min-width:30px;text-align:right">${Math.round((s.confidence||0)*100)}%</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding:2px 0 6px 15px;line-height:1.5">${s.reason||''}</div>`;
   }).join('');
 
-  document.getElementById('result-output').style.display = 'block';
-  document.getElementById('result-output').innerHTML = `
-    <div style="background:${bg[action]||'transparent'};border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid ${color}22">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  out.innerHTML=`
+    <div style="background:${bg};border-radius:12px;padding:20px;margin-bottom:14px;border:1px solid ${col}22">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
         <div>
-          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${symbol} · ${interval} · ${dataPoints} candles · ${d.market_personality?.type||'?'} market</div>
-          <div class="result-action" style="color:${color}">${action}</div>
-          <div style="font-size:13px;color:var(--muted);margin-top:4px">${d.conflict?.reason||''}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${d.symbol||'—'} · ${d.interval||''} · ${d.data_points||0} candles · <span style="text-transform:capitalize">${d.market_personality?.type||'?'} market</span></div>
+          <div class="result-big" style="color:${col}">${action}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5">${d.conflict?.reason||''}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Confidence</div>
-          <div style="font-size:40px;font-weight:800;color:${color}">${conf}%</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">${d.duration_ms}ms · ${d.modules_run} modules</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">CONFIDENCE</div>
+          <div style="font-size:44px;font-weight:900;color:${col};line-height:1">${conf}%</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${d.duration_ms||0}ms · ${d.modules_run||0} modules</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
         <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Entry</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--text)">${d.entry_zone||'—'}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Entry</div>
+          <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:var(--text)">${d.entry_zone||'—'}</div>
         </div>
         <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Stop Loss</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--red)">${d.stop_loss||'—'}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Stop Loss</div>
+          <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:var(--red)">${d.stop_loss||'—'}</div>
         </div>
-        ${(d.take_profit||[]).map((tp,i)=>`
+        ${(d.take_profit||[]).slice(0,2).map((tp,i)=>`
         <div style="background:var(--surface);border-radius:8px;padding:10px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">TP${i+1}</div>
-          <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#15803D">${tp||'—'}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">TP${i+1}</div>
+          <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#15803D">${tp||'—'}</div>
         </div>`).join('')}
       </div>
-      ${(d.reasons||[]).length?`
-      <div style="margin-bottom:14px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">Why</div>
-        ${d.reasons.map(r=>`<div style="font-size:12px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border)22">→ ${r}</div>`).join('')}
-      </div>`:''}
+
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Market Personality</div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);text-transform:capitalize">${d.market_personality?.type||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">${d.market_personality?.description||''}</div>
+      </div>
     </div>
+
+    ${d.reasons?.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;font-weight:700">Why This Decision</div>
+      ${d.reasons.map(r=>`<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);line-height:1.5">→ ${r}</div>`).join('')}
+    </div>`:''}
+
     <div>
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">Module Breakdown</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">Module Breakdown</div>
       ${mods}
     </div>
-    ${action!=='WAIT'&&action!=='NO TRADE'?`<div style="margin-top:14px;padding:10px 14px;background:rgba(180,83,9,0.06);border:1px solid rgba(180,83,9,0.2);border-radius:7px;font-size:11px;color:#B45309">⚠ Not financial advice. Always verify with your own analysis before executing any trade.</div>`:''}
+
+    ${action==='BUY'||action==='SELL'?`<div style="margin-top:14px;padding:10px 14px;background:rgba(180,83,9,0.05);border:1px solid rgba(180,83,9,0.15);border-radius:7px;font-size:11px;color:#B45309;line-height:1.6">⚠ Not financial advice. Always verify on your chart before executing. Manage your risk.</div>`:''}
   `;
 }
 
-function showError(msg){
-  document.getElementById('result-placeholder').style.display='none';
-  document.getElementById('result-output').style.display='block';
-  document.getElementById('result-output').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${msg}</div>`;
-}
-function getCookie(name){const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
+function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
 
-// Init — add 5 empty rows on load
-window.addEventListener('load',()=>{ for(let i=0;i<5;i++) addCandleRow(); });
+// Init
+window.addEventListener('load',()=>{ addRows(5); });
 </script>
 {% endblock %}
