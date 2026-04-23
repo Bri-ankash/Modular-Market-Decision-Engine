@@ -112,17 +112,11 @@ def market_data_api(request):
 @csrf_exempt
 def tradingview_webhook(request):
     """
-    TradingView Pine Script sends candles here via webhook alert.
-    Runs MMDE analysis and saves result.
+    TradingView Pine Script sends candles here.
+    Saves them so user can load + analyse from dashboard.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST only'}, status=405)
-
-    secret = request.headers.get('X-MMDE-Secret', '')
-    from django.conf import settings
-    expected = getattr(settings, 'TRADINGVIEW_WEBHOOK_SECRET', '')
-    if expected and secret != expected:
-        return JsonResponse({'error': 'Invalid secret'}, status=401)
 
     try:
         data = json.loads(request.body)
@@ -137,15 +131,42 @@ def tradingview_webhook(request):
     if len(candles) < 3:
         return JsonResponse({'error': 'Need at least 3 candles'}, status=400)
 
-    result = decision_engine.run(
-        candles=candles,
-        symbol=symbol,
-        selected_modules=None,
-        entry_price=data.get('entry_price'),
-        params={'market': market, 'interval': interval},
+    # Save to DB so dashboard can pick it up
+    from .models import TradingViewFeed
+    TradingViewFeed.objects.update_or_create(
+        user_secret='default',
+        defaults={
+            'symbol':       symbol,
+            'interval':     interval,
+            'market':       market,
+            'candles_json': json.dumps(candles),
+        }
     )
-    result['source'] = 'TradingView Webhook'
-    return JsonResponse(result)
+
+    return JsonResponse({
+        'status': 'received',
+        'symbol': symbol,
+        'interval': interval,
+        'candles': len(candles),
+        'message': 'Candles saved. Open MMDE dashboard and click Load from TradingView.',
+    })
+
+
+@login_required(login_url='/login/')
+def get_tv_feed(request):
+    """Dashboard polls this to get latest TradingView candles"""
+    from .models import TradingViewFeed
+    feed = TradingViewFeed.objects.filter(user_secret='default').first()
+    if not feed:
+        return JsonResponse({'found': False, 'message': 'No data received from TradingView yet.'})
+    return JsonResponse({
+        'found':    True,
+        'symbol':   feed.symbol,
+        'interval': feed.interval,
+        'market':   feed.market,
+        'candles':  json.loads(feed.candles_json),
+        'received': feed.received_at.strftime('%d %b %Y %H:%M:%S UTC'),
+    })
 
 
 @login_required(login_url='/login/')

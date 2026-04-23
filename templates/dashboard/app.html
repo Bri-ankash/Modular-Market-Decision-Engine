@@ -170,59 +170,52 @@
           <div id="fetch-msg" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
         </div>
 
-        <!-- TRADINGVIEW TAB -->
+                <!-- TRADINGVIEW TAB -->
         <div class="src-panel" id="src-tv">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;background:var(--surface2);padding:12px 14px;border-radius:8px;border:1px solid var(--border)">
-            📺 <strong>Two ways to use TradingView with MMDE:</strong><br/><br/>
-            <strong>Option 1 — Export CSV (quickest):</strong><br/>
-            1. Open your TradingView chart<br/>
-            2. Right-click on the chart → <strong>Export Chart Data</strong><br/>
-            3. Save the CSV → open it → copy all rows<br/>
-            4. Switch to the <strong>Paste CSV tab</strong> → paste → Parse & Load<br/><br/>
-            <strong>Option 2 — Webhook (automatic, real-time):</strong><br/>
-            TradingView sends candles to MMDE every time a candle closes.<br/>
-            Add this Pine Script to your chart:
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.8;background:var(--surface2);padding:14px 16px;border-radius:10px;border:1px solid var(--border)">
+            📺 <strong>How TradingView Live Feed works:</strong><br/>
+            1. Add the Pine Script below to your TradingView chart<br/>
+            2. Create an alert → Webhook URL → your MMDE URL<br/>
+            3. TradingView sends candles automatically on each bar close<br/>
+            4. Come back here → click <strong>Load Latest from TradingView</strong><br/>
+            5. Candles fill in → press ⚡ Run Analysis
           </div>
-          <div style="background:#1e1e2e;border-radius:10px;padding:16px;font-family:'Courier New',monospace;font-size:11px;color:#cdd6f4;line-height:2;overflow-x:auto;white-space:pre;margin-bottom:12px">//@version=5
-indicator("MMDE Data Sender", overlay=true)
 
-// Settings
-mmde_url = input.string("https://your-mmde-url.onrender.com/api/tradingview/webhook/", "MMDE Webhook URL")
-secret   = input.string("mmde-tv-secret-2026", "MMDE Secret")
-n_candles = input.int(30, "Candles to send", minval=5, maxval=100)
+          <!-- LOAD BUTTON -->
+          <button onclick="loadFromTV()" id="tv-load-btn"
+            style="width:100%;padding:14px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border:2px solid #0f3460;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;margin-bottom:12px;transition:all .2s"
+            onmouseover="this.style.borderColor='#e94560'" onmouseout="this.style.borderColor='#0f3460'">
+            📺 Load Latest from TradingView
+          </button>
+          <div id="tv-status" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);display:none"></div>
 
-// Build JSON with last N candles
-build_json() =>
-    result = '{"symbol":"' + syminfo.ticker + '",'
-    result += '"interval":"' + timeframe.period + '",'
-    result += '"market":"forex",'
-    result += '"candles":['
-    for i = n_candles - 1 to 0
-        o = str.tostring(open[i],  "#.#####")
-        h = str.tostring(high[i],  "#.#####")
-        l = str.tostring(low[i],   "#.#####")
-        c = str.tostring(close[i], "#.#####")
-        v = str.tostring(volume[i],"#")
-        result += '{"open":' + o + ',"high":' + h
-        result += ',"low":'  + l + ',"close":' + c
-        result += ',"volume":' + v + '}'
+          <details style="margin-top:4px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--primary);padding:8px 0;list-style:none">▶ Show Pine Script setup guide</summary>
+            <div style="margin-top:12px">
+              <p style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.7"><strong>Step 1.</strong> On TradingView → Pine Editor → paste this script → Add to chart:</p>
+              <div style="background:#1e1e2e;border-radius:10px;padding:14px;font-family:'Courier New',monospace;font-size:11px;color:#cdd6f4;line-height:1.9;overflow-x:auto;white-space:pre;margin-bottom:12px">//@version=5
+indicator("MMDE Feed", overlay=true)
+n = input.int(30, "Candles", minval=5, maxval=100)
+mkt = input.string("forex", "Market", options=["forex","gold","indices","crypto","stocks"])
+
+build() =>
+    r = '{"symbol":"' + syminfo.ticker + '","interval":"' + timeframe.period + '","market":"' + mkt + '","candles":[' 
+    for i = n-1 to 0
+        r += '{"open":' + str.tostring(open[i],"#.#####")
+        r += ',"high":' + str.tostring(high[i],"#.#####")
+        r += ',"low":' + str.tostring(low[i],"#.#####")
+        r += ',"close":' + str.tostring(close[i],"#.#####")
+        r += ',"volume":' + str.tostring(volume[i],"#") + '}'
         if i > 0
-            result += ','
-    result += ']}'
-    result
+            r += ','
+    r + ']}' 
 
-// Alert on every bar close
 if barstate.isconfirmed
-    alert(build_json(), alert.freq_once_per_bar_close)</div>
-          <p style="font-size:12px;color:var(--muted);line-height:1.7">
-            <strong>To set up the webhook alert:</strong><br/>
-            1. Add the script above to your chart<br/>
-            2. Click the alarm clock (Alerts) → Create Alert<br/>
-            3. Condition: MMDE Data Sender → Any alert() function call<br/>
-            4. Notifications: tick <strong>Webhook URL</strong><br/>
-            5. Paste: <code style="background:var(--border);padding:2px 6px;border-radius:4px">https://your-mmde-url.onrender.com/api/tradingview/webhook/</code><br/>
-            6. Save → MMDE auto-analyses every new candle
-          </p>
+    alert(build(), alert.freq_once_per_bar_close)</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.9"><strong>Step 2.</strong> Create Alert → Any alert() call<br/><strong>Step 3.</strong> Notifications → Webhook URL:<br/>
+              <code style="background:var(--border);padding:3px 8px;border-radius:4px;font-size:11px;word-break:break-all">https://modular-market-decision-engine.onrender.com/api/tradingview/webhook/</code></p>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -538,6 +531,57 @@ function showResult(d){
 
     ${action==='BUY'||action==='SELL'?`<div style="margin-top:14px;padding:10px 14px;background:rgba(180,83,9,0.05);border:1px solid rgba(180,83,9,0.15);border-radius:7px;font-size:11px;color:#B45309;line-height:1.6">⚠ Not financial advice. Always verify on your chart before executing. Manage your risk.</div>`:''}
   `;
+}
+
+
+// ── LOAD FROM TRADINGVIEW ──
+async function loadFromTV(){
+  const btn = document.getElementById('tv-load-btn');
+  const status = document.getElementById('tv-status');
+  btn.textContent = '⏳ Checking for TradingView data...';
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.textContent = 'Looking for latest data from TradingView...';
+  status.style.color = 'var(--muted)';
+
+  try {
+    const r = await fetch('/api/tradingview/feed/');
+    const d = await r.json();
+
+    if(!d.found){
+      status.textContent = '⚠ No data yet. Make sure your TradingView alert is set up and has fired at least once.';
+      status.style.color = 'var(--orange)';
+      return;
+    }
+
+    // Load candles into grid
+    clearRows();
+    d.candles.forEach(c => addRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp||''));
+
+    // Update symbol + interval + market
+    document.getElementById('symbol').value   = d.symbol;
+    document.getElementById('interval').value = d.interval;
+
+    // Select correct market button
+    const mktBtn = document.getElementById('mkt-' + d.market);
+    if(mktBtn){ selectMkt(d.market, mktBtn); }
+
+    status.innerHTML = `✅ <strong>${d.candles.length} candles loaded</strong> — ${d.symbol} ${d.interval} · Received: ${d.received}`;
+    status.style.color = '#15803D';
+
+    // Switch to manual tab so user can see the candles
+    switchSrc('manual', document.querySelectorAll('.src-tab')[0]);
+
+    // Scroll to run button
+    document.getElementById('run-btn').scrollIntoView({behavior:'smooth', block:'center'});
+
+  } catch(e){
+    status.textContent = '✗ Error: ' + e.message;
+    status.style.color = 'var(--red)';
+  } finally {
+    btn.textContent = '📺 Load Latest from TradingView';
+    btn.disabled = false;
+  }
 }
 
 function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
