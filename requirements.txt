@@ -5,3 +5,5 @@ gunicorn
 dj-database-url
 python-decouple
 requests
+
+python-dotenv
