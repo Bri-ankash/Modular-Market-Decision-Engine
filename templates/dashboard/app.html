@@ -570,7 +570,7 @@ async function loadFromTV(){
     status.style.color = '#15803D';
 
     // Switch to manual tab so user can see the candles
-    switchSrc('manual', document.querySelectorAll('.src-tab')[0]);
+    // data loaded — stay on current tab, status shows count
 
     // Scroll to run button
     document.getElementById('run-btn').scrollIntoView({behavior:'smooth', block:'center'});
