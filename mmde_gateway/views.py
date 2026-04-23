@@ -98,15 +98,22 @@ def analyze(request):
 
 @login_required(login_url='/login/')
 def market_data_api(request):
-    from mmde_engine import market_data
-    symbol   = request.GET.get('symbol', 'EURUSD').upper()
-    interval = request.GET.get('interval', 'H1')
-    limit    = min(int(request.GET.get('count', 50)), 200)
+    from mmde_engine.market_data import fetch
     try:
-        result = market_data.fetch(symbol, interval, limit)
+        symbol   = request.GET.get('symbol', 'EURUSD').upper().strip()
+        interval = request.GET.get('interval', 'H1').strip()
+        limit    = int(request.GET.get('count', 50))
+        limit    = min(max(limit, 5), 200)
+        result   = fetch(symbol, interval, limit)
         return JsonResponse(result)
     except Exception as e:
-        return JsonResponse({'error': str(e), 'candles': []}, status=400)
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': str(e),
+            'candles': [],
+            'source': 'error',
+        }, status=200)  # 200 so JS gets JSON not redirect
 
 
 @csrf_exempt
