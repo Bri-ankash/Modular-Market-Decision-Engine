@@ -17,6 +17,11 @@ def dashboard(request):
         'history': history,
         'markets': settings.ALL_MARKETS,
         'allowed_markets': user.allowed_markets if user.is_active_subscription else [],
+        'modules': [
+            'structure','liquidity','trap_detection',
+            'price_action','imbalance','volume',
+            'momentum','volatility','session',
+        ],
     })
 
 
