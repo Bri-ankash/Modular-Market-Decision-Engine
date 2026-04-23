@@ -109,15 +109,15 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
           <div style="font-size:14px;font-weight:700;color:var(--text)">Feed Market Data</div>
           <div style="display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border)">
-            <button class="src-tab active" onclick="switchSrc('manual',this)">✏ Manual</button>
+            <button class="src-tab" onclick="switchSrc('manual',this)">✏ Manual</button>
             <button class="src-tab" onclick="switchSrc('csv',this)">📋 Paste CSV</button>
-            <button class="src-tab" onclick="switchSrc('live',this)">📡 Live</button>
+            <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live</button>
             <button class="src-tab" onclick="switchSrc('tv',this)">📺 TradingView</button>
           </div>
         </div>
 
         <!-- MANUAL -->
-        <div class="src-panel active" id="src-manual">
+        <div class="src-panel" id="src-manual">
           <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
             💡 <strong>From MT5:</strong> Right-click chart → Toolbox → History tab. Copy the OHLCV values row by row.<br/>
             Enter oldest candle first, newest last. Minimum 3 candles, recommended 20+.
@@ -152,7 +152,7 @@
         </div>
 
         <!-- LIVE FETCH -->
-        <div class="src-panel" id="src-live">
+        <div class="src-panel active" id="src-live">
           <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
             📡 Pulls real candles automatically from <strong>Yahoo Finance</strong> (free, no API key needed).<br/>
             Works for: Forex pairs, Gold, Indices, Crypto, Stocks. Uses the symbol and timeframe you set on the left.
@@ -170,16 +170,60 @@
           <div id="fetch-msg" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
         </div>
 
-                <!-- TRADINGVIEW TAB -->
+                        <!-- TRADINGVIEW TAB -->
         <div class="src-panel" id="src-tv">
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.8;background:var(--surface2);padding:14px 16px;border-radius:10px;border:1px solid var(--border)">
-            📺 <strong>How TradingView Live Feed works:</strong><br/>
-            1. Add the Pine Script below to your TradingView chart<br/>
-            2. Create an alert → Webhook URL → your MMDE URL<br/>
-            3. TradingView sends candles automatically on each bar close<br/>
-            4. Come back here → click <strong>Load Latest from TradingView</strong><br/>
-            5. Candles fill in → press ⚡ Run Analysis
+          <div style="font-size:13px;line-height:1.9;color:var(--text);margin-bottom:16px">
+            Connect TradingView in <strong>2 steps — done once, works forever:</strong>
           </div>
+
+          <!-- STEP 1 -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:800;color:var(--primary);margin-bottom:8px">STEP 1 — Add script to TradingView (30 seconds)</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.7">
+              Open TradingView → Pine Script Editor (bottom) → paste this → click Add to chart:
+            </p>
+            <div style="position:relative">
+              <pre id="pine-code" style="background:#1e1e2e;border-radius:8px;padding:12px;font-size:11px;color:#cdd6f4;line-height:1.8;overflow-x:auto;margin:0;white-space:pre">//@version=5
+indicator("MMDE Feed", overlay=true)
+n   = input.int(30, "Candles", minval=5, maxval=100)
+mkt = input.string("forex","Market",options=["forex","gold","indices","crypto","stocks"])
+build() =>
+    r = '{"symbol":"'+syminfo.ticker+'","interval":"'+timeframe.period+'","market":"'+mkt+'","candles":['
+    for i = n-1 to 0
+        r += '{"open":'+str.tostring(open[i],"#.#####")+',"high":'+str.tostring(high[i],"#.#####")+',"low":'+str.tostring(low[i],"#.#####")+',"close":'+str.tostring(close[i],"#.#####")+',"volume":'+str.tostring(volume[i],"#")+'}'
+        if i > 0
+            r += ','
+    r + ']}'
+if barstate.isconfirmed
+    alert(build(), alert.freq_once_per_bar_close)</pre>
+              <button onclick="copyPine()" style="position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700" id="copy-pine-btn">Copy</button>
+            </div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:800;color:var(--primary);margin-bottom:8px">STEP 2 — Create alert (1 minute)</div>
+            <div style="font-size:12px;color:var(--muted);line-height:2.0">
+              🔔 Click the <strong>Alarm clock icon</strong> on TradingView<br/>
+              → Create Alert<br/>
+              → Condition: <strong>MMDE Feed → Any alert() call</strong><br/>
+              → Notifications: tick <strong>Webhook URL</strong><br/>
+              → Paste this URL:
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+              <code id="webhook-url" style="flex:1;background:#1e1e2e;color:#cdd6f4;padding:8px 12px;border-radius:7px;font-size:11px;word-break:break-all;display:block">https://modular-market-decision-engine.onrender.com/api/tradingview/webhook/</code>
+              <button onclick="copyWebhook()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700;flex-shrink:0" id="copy-url-btn">Copy URL</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px">→ Click <strong>Create</strong>. Done. Never touch this again.</div>
+          </div>
+
+          <!-- LOAD BUTTON -->
+          <button onclick="loadFromTV()" id="tv-load-btn"
+            style="width:100%;padding:14px;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;margin-bottom:10px">
+            📺 Load Latest TradingView Candles → Analyse
+          </button>
+          <div id="tv-status" style="font-size:12px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);display:none;line-height:1.6"></div>
+        </div>
 
           <!-- LOAD BUTTON -->
           <button onclick="loadFromTV()" id="tv-load-btn"
@@ -268,6 +312,14 @@ function selectMkt(m, btn){
 
 // ── SOURCE TABS ──
 function switchSrc(name, btn){
+  // Auto-fetch Yahoo data when user opens Live tab
+  if(name === 'live'){
+    setTimeout(()=>{
+      if(document.querySelectorAll('.candle-grid').length < 3){
+        fetchLive();
+      }
+    }, 300);
+  }
   document.querySelectorAll('.src-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.src-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('src-'+name).classList.add('active');
@@ -584,9 +636,32 @@ async function loadFromTV(){
   }
 }
 
+
+function copyPine(){
+  const txt = document.getElementById('pine-code').innerText;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn = document.getElementById('copy-pine-btn');
+    btn.textContent = '✓ Copied!';
+    btn.style.background = '#16A34A';
+    setTimeout(()=>{ btn.textContent='Copy'; btn.style.background='var(--primary)'; }, 2000);
+  });
+}
+function copyWebhook(){
+  const txt = document.getElementById('webhook-url').innerText;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn = document.getElementById('copy-url-btn');
+    btn.textContent = '✓ Copied!';
+    btn.style.background = '#16A34A';
+    setTimeout(()=>{ btn.textContent='Copy URL'; btn.style.background='var(--primary)'; }, 2000);
+  });
+}
+
 function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
 
 // Init
-window.addEventListener('load',()=>{ addRows(5); });
+window.addEventListener('load',()=>{
+  // Auto-fetch live data immediately on page load
+  fetchLive();
+});
 </script>
 {% endblock %}
