@@ -100,3 +100,12 @@ def fund_decision(equity_curve, base_size=1.0):
         "strategy": strategy,
         "position_size": size
     }
+
+from mmde_engine.mt5_broker import MT5Broker
+
+broker = MT5Broker()
+broker.connect()
+
+def execute_live_trade(symbol, direction, size):
+    result = broker.place_order(symbol, direction, size)
+    return result
