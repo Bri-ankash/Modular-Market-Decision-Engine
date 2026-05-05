@@ -1,0 +1,8 @@
+candles = data["Close"]
+
+if hasattr(candles, "iloc") and hasattr(candles, "shape") and len(candles.shape) > 1:
+    candles = candles.iloc[:, 0]
+
+candles = candles.dropna().to_numpy().astype(float)
+
+candles = [{"close": float(x)} for x in candles]
