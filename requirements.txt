@@ -5,5 +5,6 @@ gunicorn
 dj-database-url
 python-decouple
 requests
-
-python-dotenv
+yfinance
+pandas
+numpy
