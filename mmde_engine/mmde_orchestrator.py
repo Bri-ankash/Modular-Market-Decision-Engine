@@ -1,3 +1,4 @@
+from mmde_engine.access_control import AccessControl
 import time
 
 from mmde_engine.strategy_ensemble import ensemble_vote
@@ -13,6 +14,9 @@ class MMDEEngine:
         self.equity = 1000
 
     def run_cycle(self, market_data):
+        from mmde_engine.access_control import AccessControl
+        ac = AccessControl()
+        USER_TIER = "tier2"
 
         symbols = list(market_data.keys())
         weights = portfolio_weights(symbols, market_data)
