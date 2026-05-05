@@ -5,3 +5,14 @@ def can_trade(symbol):
 
 def register_trade(symbol, trade):
     open_positions[symbol] = trade
+
+def save_trade(trade):
+    """
+    Simple trade logger (compat layer for execution engine)
+    """
+    # minimal safe storage (in-memory fallback)
+    if not hasattr(save_trade, "history"):
+        save_trade.history = []
+
+    save_trade.history.append(trade)
+    return True
