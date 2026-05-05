@@ -23,7 +23,7 @@ import random
 import math
 import logging
 
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════
 # SYMBOL MAP — MMDE name → Yahoo Finance ticker
