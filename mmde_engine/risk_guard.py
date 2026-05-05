@@ -4,9 +4,8 @@ def risk_gate(candles, score):
 
     volatility = abs(closes[-1] - closes[0]) / closes[0]
 
-    # HARD SURVIVAL RULES
-    if volatility > 0.05:
-        return False, "TOO_VOLATILE"
+    if volatility > 0.03:
+        return False, "HIGH_VOL_BLOCK"
 
     if abs(score) < 0.002:
         return False, "NO_EDGE"
