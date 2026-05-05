@@ -1,38 +1,23 @@
-def momentum(c):
-    closes = [x["close"] for x in c]
-    if len(closes) < 6:
-        return 0
-    return (closes[-1] - closes[-5]) / closes[-5]
+def simple_strategy(candles):
+    """
+    Core trend + momentum strategy
+    Returns: BUY / SELL / HOLD
+    """
 
+    if not candles or len(candles) < 10:
+        return "HOLD"
 
-def mean_reversion(c):
-    closes = [x["close"] for x in c]
-    if len(closes) < 10:
-        return 0
-    avg = sum(closes[-10:]) / 10
-    return (avg - closes[-1]) / avg
+    closes = [c["close"] for c in candles]
 
+    short_ma = sum(closes[-3:]) / 3
+    long_ma = sum(closes[-10:]) / 10
 
-def breakout(c):
-    closes = [x["close"] for x in c]
-    if len(closes) < 10:
-        return 0
-    return (closes[-1] - min(closes[-10:])) / min(closes[-10:])
+    momentum = closes[-1] - closes[-5]
 
+    if short_ma > long_ma and momentum > 0:
+        return "BUY"
 
-def ensemble(candles):
-    m = momentum(candles)
-    r = mean_reversion(candles)
-    b = breakout(candles)
+    if short_ma < long_ma and momentum < 0:
+        return "SELL"
 
-    score = (m * 0.5) + (r * 0.3) + (b * 0.2)
-
-    confidence = min(abs(score) * 8, 1.0)
-
-    if score > 0.002:
-        return {"signal": "BUY", "score": score, "confidence": confidence}
-
-    if score < -0.002:
-        return {"signal": "SELL", "score": score, "confidence": confidence}
-
-    return {"signal": "HOLD", "score": score, "confidence": confidence}
+    return "HOLD"
