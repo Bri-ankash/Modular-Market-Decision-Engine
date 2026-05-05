@@ -1,27 +1,13 @@
-import uuid
-
-trades = []
+from mmde_engine.paper_broker import execute_order, close_trade
 
 def execute_trade(symbol, candles, score):
 
-    entry = candles[-1]["close"]
+    price = candles[-1]["close"]
 
     direction = "BUY" if score > 0 else "SELL"
 
-    exit_price = candles[-2]["close"] if len(candles) > 1 else entry
+    size = 1  # can be upgraded later
 
-    pnl = (exit_price - entry) if direction == "BUY" else (entry - exit_price)
-
-    trade = {
-        "id": str(uuid.uuid4())[:8],
-        "symbol": symbol,
-        "direction": direction,
-        "entry": entry,
-        "exit": exit_price,
-        "pnl": pnl,
-        "score": score
-    }
-
-    trades.append(trade)
+    trade = execute_order(symbol, direction, price, size)
 
     return trade
