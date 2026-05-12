@@ -28,7 +28,7 @@
     <div style="font-size:15px;font-weight:800;color:var(--text)">MMDE</div>
   </div>
   <div style="display:flex;gap:12px;align-items:center">
-    <span style="font-size:11px;background:rgba(91,79,207,0.1);border:1px solid rgba(91,79,207,0.2);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700">{{ user.subscription_plan }}{% if user.is_active_subscription %} ✓{% endif %}</span>
+    <span style="font-size:11px;background:rgba(91,79,207,0.1);border:1px solid rgba(91,79,207,0.2);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700">{{ user.subscription_plan }}{% if has_active_subscription %} ✓{% endif %}</span>
     {% if user.subscription_plan != 'ELITE' %}<a href="/subscription/" style="font-size:12px;color:var(--primary);font-weight:700">Upgrade →</a>{% endif %}
     <a href="/logout/" style="font-size:12px;color:var(--red);font-weight:700">Logout</a>
   </div>
@@ -37,7 +37,7 @@
 <div class="d-body">
   {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:12px">{{ m }}</div>{% endfor %}{% endif %}
 
-  {% if not user.is_active_subscription %}
+  {% if not has_active_subscription %}
   <div style="background:rgba(91,79,207,0.05);border:1px solid rgba(91,79,207,0.2);border-radius:10px;padding:12px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <span style="font-size:13px;color:var(--text)">You are on Free — no market access. <strong>Upgrade to start analysing.</strong></span>
     <a href="/subscription/" class="btn btn-primary btn-sm">See Plans →</a>

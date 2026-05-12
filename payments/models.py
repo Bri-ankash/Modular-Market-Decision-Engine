@@ -15,9 +15,10 @@ class Payment(models.Model):
     notes = models.TextField(blank=True)
 
     def approve(self, admin_user=None):
-        from django.conf import settings
         from django.utils import timezone
         from datetime import timedelta
+        if self.status == 'APPROVED':
+            return
         self.status = 'APPROVED'
         self.approved_by = admin_user
         self.save()

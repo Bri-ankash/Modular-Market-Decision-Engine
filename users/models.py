@@ -51,11 +51,22 @@ class MMDEUser(AbstractUser):
         return f"{self.email} ({self.subscription_plan})"
 
 
+    def has_active_subscription(self):
+        if self.is_superuser:
+            return True
+        if not self.is_active_subscription:
+            return False
+        if self.subscription_expires is not None:
+            from django.utils import timezone
+            return self.subscription_expires > timezone.now()
+        return True
+
+
     def can_access_market(self, market):
         market = (market or "").lower().strip()
         if self.is_superuser:
             return True
-        if not self.is_active_subscription:
+        if not self.has_active_subscription():
             return False
         return market in [m.lower() for m in (self.allowed_markets or [])]
 

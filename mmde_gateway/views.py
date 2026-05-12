@@ -12,6 +12,7 @@ from mmde_engine import decision_engine
 def dashboard(request):
     from django.conf import settings
     user = request.user
+    has_active_subscription = user.has_active_subscription()
     history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
     tv_webhook_url = request.build_absolute_uri(reverse('tv_webhook'))
     tv_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
@@ -22,7 +23,8 @@ def dashboard(request):
         'user': user,
         'history': history,
         'markets': settings.ALL_MARKETS,
-        'allowed_markets': user.allowed_markets if user.is_active_subscription else [],
+        'has_active_subscription': has_active_subscription,
+        'allowed_markets': user.allowed_markets if has_active_subscription else [],
         'modules': [
             'structure','liquidity','trap_detection',
             'price_action','imbalance','volume',
@@ -61,12 +63,12 @@ def analyze(request):
     # Market access check
     user = request.user
     if not user.is_superuser:
-        if not user.is_active_subscription:
+        if not user.has_active_subscription():
             return JsonResponse({
                 'error': 'No active subscription. Please upgrade to access markets.',
                 'upgrade_url': '/subscription/',
             }, status=403)
-        if market not in (user.allowed_markets or []):
+        if not user.can_access_market(market):
             return JsonResponse({
                 'error': f'"{market.title()}" is not included in your {user.subscription_plan} plan.',
                 'upgrade_url': '/subscription/',
@@ -239,7 +241,7 @@ def subscription(request):
         'user':        user,
         'pending':     pending,
         'approved':    approved,
-        'mpesa_till':  '5359428',
+        'mpesa_till':  settings.MPESA_TILL,
     })
 
 
