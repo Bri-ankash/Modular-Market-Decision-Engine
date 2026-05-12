@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+import json
 
 class MarketAccessMiddleware:
     """Block unauthorized market access"""
@@ -11,6 +12,12 @@ class MarketAccessMiddleware:
             if not request.user.is_authenticated:
                 return JsonResponse({'error': 'Authentication required'}, status=401)
             market = request.GET.get('market') or request.POST.get('market', '')
+            if not market and request.content_type == 'application/json':
+                try:
+                    payload = json.loads((request.body or b'').decode('utf-8') or '{}')
+                    market = payload.get('market', '')
+                except Exception:
+                    market = ''
             if market and not request.user.can_access_market(market):
                 return JsonResponse({
                     'error': f'Market "{market}" not included in your plan.',

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 import json
 from .models import AnalysisRequest
 from mmde_engine import decision_engine
@@ -12,6 +13,11 @@ def dashboard(request):
     from django.conf import settings
     user = request.user
     history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
+    tv_webhook_url = request.build_absolute_uri(reverse('tv_webhook'))
+    tv_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
+    if tv_secret:
+        joiner = '&' if '?' in tv_webhook_url else '?'
+        tv_webhook_url = f'{tv_webhook_url}{joiner}secret={tv_secret}'
     return render(request, 'dashboard/app.html', {
         'user': user,
         'history': history,
@@ -22,6 +28,7 @@ def dashboard(request):
             'price_action','imbalance','volume',
             'momentum','volatility','session',
         ],
+        'tv_webhook_url': tv_webhook_url,
     })
 
 
@@ -41,6 +48,8 @@ def analyze(request):
     symbol   = data.get('symbol', 'EURUSD').upper()
     interval = data.get('interval', 'H1')
     selected = data.get('selected_modules') or []
+    if isinstance(selected, str):
+        selected = [m.strip() for m in selected.split(',') if m.strip()]
     entry    = data.get('entry_price')
     candles  = data.get('candles') or []
 
@@ -125,6 +134,16 @@ def tradingview_webhook(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST only'}, status=405)
 
+    from django.conf import settings
+    provided_secret = (
+        request.headers.get('X-TV-SECRET')
+        or request.GET.get('secret')
+        or request.POST.get('secret')
+    )
+    configured_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
+    if configured_secret and provided_secret != configured_secret:
+        return JsonResponse({'error': 'Unauthorized webhook request'}, status=401)
+
     try:
         data = json.loads(request.body)
     except Exception:
@@ -141,7 +160,7 @@ def tradingview_webhook(request):
     # Save to DB so dashboard can pick it up
     from .models import TradingViewFeed
     TradingViewFeed.objects.update_or_create(
-        user_secret='default',
+        user_secret=provided_secret or 'default',
         defaults={
             'symbol':       symbol,
             'interval':     interval,
@@ -162,8 +181,11 @@ def tradingview_webhook(request):
 @login_required(login_url='/login/')
 def get_tv_feed(request):
     """Dashboard polls this to get latest TradingView candles"""
+    from django.conf import settings
     from .models import TradingViewFeed
-    feed = TradingViewFeed.objects.filter(user_secret='default').first()
+    configured_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
+    lookup_secret = configured_secret or 'default'
+    feed = TradingViewFeed.objects.filter(user_secret=lookup_secret).first()
     if not feed:
         return JsonResponse({'found': False, 'message': 'No data received from TradingView yet.'})
     return JsonResponse({
@@ -238,3 +260,7 @@ def landing(request):
         'plans':   settings.SUBSCRIPTION_PLANS,
         'modules': modules,
     })
+
+
+def health(request):
+    return JsonResponse({'status': 'ok'})

@@ -6,9 +6,12 @@ from payments import views as pv
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', gw.health, name='health'),
     path('', gw.landing, name='landing'),
     path('login/', uv.login_view, name='login'),
     path('register/', uv.register_view, name='register'),
+    path('auth/google/', uv.google_login, name='google_login'),
+    path('auth/google/callback', uv.google_callback, name='google_callback'),
     path('logout/', uv.logout_view, name='logout'),
     path('app/', gw.dashboard, name='dashboard'),
     path('app/analysis/', gw.dashboard, name='analysis'),

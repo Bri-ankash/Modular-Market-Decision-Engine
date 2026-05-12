@@ -211,7 +211,7 @@ if barstate.isconfirmed
               → Paste this URL:
             </div>
             <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-              <code id="webhook-url" style="flex:1;background:#1e1e2e;color:#cdd6f4;padding:8px 12px;border-radius:7px;font-size:11px;word-break:break-all;display:block">https://modular-market-decision-engine.onrender.com/api/tradingview/webhook/</code>
+              <code id="webhook-url" style="flex:1;background:#1e1e2e;color:#cdd6f4;padding:8px 12px;border-radius:7px;font-size:11px;word-break:break-all;display:block">{{ tv_webhook_url }}</code>
               <button onclick="copyWebhook()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700;flex-shrink:0" id="copy-url-btn">Copy URL</button>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:8px">→ Click <strong>Create</strong>. Done. Never touch this again.</div>
@@ -225,41 +225,6 @@ if barstate.isconfirmed
           <div id="tv-status" style="font-size:12px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);display:none;line-height:1.6"></div>
         </div>
 
-          <!-- LOAD BUTTON -->
-          <button onclick="loadFromTV()" id="tv-load-btn"
-            style="width:100%;padding:14px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border:2px solid #0f3460;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;margin-bottom:12px;transition:all .2s"
-            onmouseover="this.style.borderColor='#e94560'" onmouseout="this.style.borderColor='#0f3460'">
-            📺 Load Latest from TradingView
-          </button>
-          <div id="tv-status" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);display:none"></div>
-
-          <details style="margin-top:4px">
-            <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--primary);padding:8px 0;list-style:none">▶ Show Pine Script setup guide</summary>
-            <div style="margin-top:12px">
-              <p style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.7"><strong>Step 1.</strong> On TradingView → Pine Editor → paste this script → Add to chart:</p>
-              <div style="background:#1e1e2e;border-radius:10px;padding:14px;font-family:'Courier New',monospace;font-size:11px;color:#cdd6f4;line-height:1.9;overflow-x:auto;white-space:pre;margin-bottom:12px">//@version=5
-indicator("MMDE Feed", overlay=true)
-n = input.int(30, "Candles", minval=5, maxval=100)
-mkt = input.string("forex", "Market", options=["forex","gold","indices","crypto","stocks"])
-
-build() =>
-    r = '{"symbol":"' + syminfo.ticker + '","interval":"' + timeframe.period + '","market":"' + mkt + '","candles":[' 
-    for i = n-1 to 0
-        r += '{"open":' + str.tostring(open[i],"#.#####")
-        r += ',"high":' + str.tostring(high[i],"#.#####")
-        r += ',"low":' + str.tostring(low[i],"#.#####")
-        r += ',"close":' + str.tostring(close[i],"#.#####")
-        r += ',"volume":' + str.tostring(volume[i],"#") + '}'
-        if i > 0
-            r += ','
-    r + ']}' 
-
-if barstate.isconfirmed
-    alert(build(), alert.freq_once_per_bar_close)</div>
-              <p style="font-size:12px;color:var(--muted);line-height:1.9"><strong>Step 2.</strong> Create Alert → Any alert() call<br/><strong>Step 3.</strong> Notifications → Webhook URL:<br/>
-              <code style="background:var(--border);padding:3px 8px;border-radius:4px;font-size:11px;word-break:break-all">https://modular-market-decision-engine.onrender.com/api/tradingview/webhook/</code></p>
-            </div>
-          </details>
         </div>
       </div>
 
@@ -315,7 +280,7 @@ function switchSrc(name, btn){
   // Auto-fetch Yahoo data when user opens Live tab
   if(name === 'live'){
     setTimeout(()=>{
-      if(document.querySelectorAll('.candle-grid').length < 3){
+      if(document.querySelectorAll('#candle-rows .candle-grid').length < 3){
         fetchLive();
       }
     }, 300);
@@ -348,14 +313,14 @@ function addRow(o='',h='',l='',c='',v='',t=''){
 function addRows(n){ for(let i=0;i<n;i++) addRow(); }
 function clearRows(){ document.getElementById('candle-rows').innerHTML=''; rowId=0; updateCount(); }
 function updateCount(){
-  const n = document.querySelectorAll('.candle-grid').length;
+  const n = document.querySelectorAll('#candle-rows .candle-grid').length;
   const el = document.getElementById('row-count');
   el.textContent = n + ' candle' + (n!==1?'s':'');
   el.style.color = n>=3 ? 'var(--green)' : 'var(--red)';
 }
 
 function getCandles(){
-  const rows = document.querySelectorAll('.candle-grid');
+  const rows = document.querySelectorAll('#candle-rows .candle-grid');
   const out = [];
   rows.forEach(row=>{
     const ins = row.querySelectorAll('input');
@@ -631,7 +596,7 @@ async function loadFromTV(){
     status.textContent = '✗ Error: ' + e.message;
     status.style.color = 'var(--red)';
   } finally {
-    btn.textContent = '📺 Load Latest from TradingView';
+    btn.textContent = '📺 Load Latest TradingView Candles → Analyse';
     btn.disabled = false;
   }
 }

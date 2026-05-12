@@ -3,9 +3,17 @@ import os
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-insecure-key-change-in-production")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,.onrender.com"
+).split(",")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -97,15 +105,10 @@ SUBSCRIPTION_PLANS = {
 ALL_MARKETS = ['forex', 'gold', 'indices', 'crypto', 'stocks']
 
 MPESA_TILL = os.environ.get('MPESA_TILL', '5359428')
-DEBUG = True
-
-
-
-
 X_FRAME_OPTIONS = 'DENY'
-SECURE_SSL_REDIRECT = False
+SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
-TRADINGVIEW_WEBHOOK_SECRET = os.environ.get('TV_WEBHOOK_SECRET', 'mmde-tv-secret-2026')
+TRADINGVIEW_WEBHOOK_SECRET = os.environ.get('TV_WEBHOOK_SECRET', '')

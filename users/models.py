@@ -1,7 +1,12 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
-PLAN_CHOICES = [('FREE', 'Free'), ('BASIC', 'Basic $30')]
+PLAN_CHOICES = [
+    ('FREE', 'Free'),
+    ('BASIC', 'Basic $30'),
+    ('PRO', 'Pro $40'),
+    ('ELITE', 'Elite $50'),
+]
 
 
 # 🔥 FIX: Required for createsuperuser to work with email login
@@ -42,29 +47,29 @@ class MMDEUser(AbstractUser):
     # 🔥 FIX: attach custom manager
     objects = MMDEUserManager()
 
-def __str__(self):
-    return f"{self.email} ({self.subscription_plan})"
+    def __str__(self):
+        return f"{self.email} ({self.subscription_plan})"
 
 
-def can_access_market(self, market):
-    if self.is_superuser:
-        return True
-    if not self.is_active_subscription:
-        return False
-    return market in self.allowed_markets
+    def can_access_market(self, market):
+        market = (market or "").lower().strip()
+        if self.is_superuser:
+            return True
+        if not self.is_active_subscription:
+            return False
+        return market in [m.lower() for m in (self.allowed_markets or [])]
 
 
-def get_allowed_markets(self):
-    from django.conf import settings
+    def get_allowed_markets(self):
+        from django.conf import settings
 
-    plans = getattr(settings, "SUBSCRIPTION_PLANS", {})
-    plan = plans.get(self.subscription_plan, {})
-    return plan.get("markets", [])
+        plans = getattr(settings, "SUBSCRIPTION_PLANS", {})
+        plan = plans.get(self.subscription_plan, {})
+        markets = plan.get("markets", [])
+        return [m.lower() for m in markets]
 
 
-def save(self, *args, **kwargs):
-    from django.conf import settings
-
-    self.allowed_markets = self.get_allowed_markets()
-    super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        self.allowed_markets = self.get_allowed_markets()
+        super().save(*args, **kwargs)
 
