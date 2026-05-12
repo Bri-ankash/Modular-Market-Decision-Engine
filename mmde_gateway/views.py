@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.urls import reverse
 import json
 from .models import AnalysisRequest
 from mmde_engine import decision_engine
@@ -14,11 +13,6 @@ def dashboard(request):
     user = request.user
     has_active_subscription = user.has_active_subscription()
     history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
-    tv_webhook_url = request.build_absolute_uri(reverse('tv_webhook'))
-    tv_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
-    if tv_secret:
-        joiner = '&' if '?' in tv_webhook_url else '?'
-        tv_webhook_url = f'{tv_webhook_url}{joiner}secret={tv_secret}'
     return render(request, 'dashboard/app.html', {
         'user': user,
         'history': history,
@@ -30,13 +24,12 @@ def dashboard(request):
             'price_action','imbalance','volume',
             'momentum','volatility','session',
         ],
-        'tv_webhook_url': tv_webhook_url,
     })
 
 
-@login_required(login_url='/login/')
 def analyze(request):
-    from django.conf import settings
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required', 'login_url': '/login/'}, status=401)
 
     if request.method == 'POST':
         try:
@@ -107,8 +100,9 @@ def analyze(request):
         return JsonResponse({'error': f'Analysis error: {str(e)}'}, status=500)
 
 
-@login_required(login_url='/login/')
 def market_data_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required', 'login_url': '/login/'}, status=401)
     from mmde_engine.market_data import fetch
     try:
         symbol   = request.GET.get('symbol', 'EURUSD').upper().strip()

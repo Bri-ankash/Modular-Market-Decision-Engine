@@ -112,7 +112,6 @@
             <button class="src-tab" onclick="switchSrc('manual',this)">✏ Manual</button>
             <button class="src-tab" onclick="switchSrc('csv',this)">📋 Paste CSV</button>
             <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live</button>
-            <button class="src-tab" onclick="switchSrc('tv',this)">📺 TradingView</button>
           </div>
         </div>
 
@@ -168,61 +167,6 @@
             <button onclick="fetchLive()" id="fetch-btn" class="btn btn-primary" style="padding:10px 22px">Fetch Live Data</button>
           </div>
           <div id="fetch-msg" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
-        </div>
-
-                        <!-- TRADINGVIEW TAB -->
-        <div class="src-panel" id="src-tv">
-          <div style="font-size:13px;line-height:1.9;color:var(--text);margin-bottom:16px">
-            Connect TradingView in <strong>2 steps — done once, works forever:</strong>
-          </div>
-
-          <!-- STEP 1 -->
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
-            <div style="font-size:12px;font-weight:800;color:var(--primary);margin-bottom:8px">STEP 1 — Add script to TradingView (30 seconds)</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.7">
-              Open TradingView → Pine Script Editor (bottom) → paste this → click Add to chart:
-            </p>
-            <div style="position:relative">
-              <pre id="pine-code" style="background:#1e1e2e;border-radius:8px;padding:12px;font-size:11px;color:#cdd6f4;line-height:1.8;overflow-x:auto;margin:0;white-space:pre">//@version=5
-indicator("MMDE Feed", overlay=true)
-n   = input.int(30, "Candles", minval=5, maxval=100)
-mkt = input.string("forex","Market",options=["forex","gold","indices","crypto","stocks"])
-build() =>
-    r = '{"symbol":"'+syminfo.ticker+'","interval":"'+timeframe.period+'","market":"'+mkt+'","candles":['
-    for i = n-1 to 0
-        r += '{"open":'+str.tostring(open[i],"#.#####")+',"high":'+str.tostring(high[i],"#.#####")+',"low":'+str.tostring(low[i],"#.#####")+',"close":'+str.tostring(close[i],"#.#####")+',"volume":'+str.tostring(volume[i],"#")+'}'
-        if i > 0
-            r += ','
-    r + ']}'
-if barstate.isconfirmed
-    alert(build(), alert.freq_once_per_bar_close)</pre>
-              <button onclick="copyPine()" style="position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700" id="copy-pine-btn">Copy</button>
-            </div>
-          </div>
-
-          <!-- STEP 2 -->
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px">
-            <div style="font-size:12px;font-weight:800;color:var(--primary);margin-bottom:8px">STEP 2 — Create alert (1 minute)</div>
-            <div style="font-size:12px;color:var(--muted);line-height:2.0">
-              🔔 Click the <strong>Alarm clock icon</strong> on TradingView<br/>
-              → Create Alert<br/>
-              → Condition: <strong>MMDE Feed → Any alert() call</strong><br/>
-              → Notifications: tick <strong>Webhook URL</strong><br/>
-              → Paste this URL:
-            </div>
-            <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-              <code id="webhook-url" style="flex:1;background:#1e1e2e;color:#cdd6f4;padding:8px 12px;border-radius:7px;font-size:11px;word-break:break-all;display:block">{{ tv_webhook_url }}</code>
-              <button onclick="copyWebhook()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700;flex-shrink:0" id="copy-url-btn">Copy URL</button>
-            </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px">→ Click <strong>Create</strong>. Done. Never touch this again.</div>
-          </div>
-
-          <!-- LOAD BUTTON -->
-          <button onclick="loadFromTV()" id="tv-load-btn"
-            style="width:100%;padding:14px;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;margin-bottom:10px">
-            📺 Load Latest TradingView Candles → Analyse
-          </button>
-          <div id="tv-status" style="font-size:12px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);display:none;line-height:1.6"></div>
         </div>
 
         </div>
@@ -380,7 +324,16 @@ async function fetchLive(){
 
   try {
     const r = await fetch(`/api/market-data/?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&count=${count}`);
+    const contentType = r.headers.get('content-type') || '';
+    if(!contentType.includes('application/json')){
+      const text = await r.text();
+      throw new Error(`Server returned non-JSON response (${r.status}). ${text.slice(0,80)}`);
+    }
     const d = await r.json();
+    if(r.status===401 && d.login_url){
+      window.location.href = d.login_url;
+      return;
+    }
     if(d.error){ msg.textContent='✗ '+d.error; msg.style.color='var(--red)'; return; }
     clearRows();
     d.candles.forEach(c=>addRow(c.open,c.high,c.low,c.close,c.volume,c.timestamp||''));
@@ -457,7 +410,16 @@ async function runAnalysis(){
         candles:  candles,
       })
     });
+    const contentType = r.headers.get('content-type') || '';
+    if(!contentType.includes('application/json')){
+      const text = await r.text();
+      throw new Error(`Server returned non-JSON response (${r.status}). ${text.slice(0,80)}`);
+    }
     const d=await r.json();
+    if(r.status===401 && d.login_url){
+      window.location.href = d.login_url;
+      return;
+    }
     showResult(d);
   }catch(e){
     showResult({error:'Network error: '+e.message});
@@ -550,76 +512,6 @@ function showResult(d){
   `;
 }
 
-
-// ── LOAD FROM TRADINGVIEW ──
-async function loadFromTV(){
-  const btn = document.getElementById('tv-load-btn');
-  const status = document.getElementById('tv-status');
-  btn.textContent = '⏳ Checking for TradingView data...';
-  btn.disabled = true;
-  status.style.display = 'block';
-  status.textContent = 'Looking for latest data from TradingView...';
-  status.style.color = 'var(--muted)';
-
-  try {
-    const r = await fetch('/api/tradingview/feed/');
-    const d = await r.json();
-
-    if(!d.found){
-      status.textContent = '⚠ No data yet. Make sure your TradingView alert is set up and has fired at least once.';
-      status.style.color = 'var(--orange)';
-      return;
-    }
-
-    // Load candles into grid
-    clearRows();
-    d.candles.forEach(c => addRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp||''));
-
-    // Update symbol + interval + market
-    document.getElementById('symbol').value   = d.symbol;
-    document.getElementById('interval').value = d.interval;
-
-    // Select correct market button
-    const mktBtn = document.getElementById('mkt-' + d.market);
-    if(mktBtn){ selectMkt(d.market, mktBtn); }
-
-    status.innerHTML = `✅ <strong>${d.candles.length} candles loaded</strong> — ${d.symbol} ${d.interval} · Received: ${d.received}`;
-    status.style.color = '#15803D';
-
-    // Switch to manual tab so user can see the candles
-    // data loaded — stay on current tab, status shows count
-
-    // Scroll to run button
-    document.getElementById('run-btn').scrollIntoView({behavior:'smooth', block:'center'});
-
-  } catch(e){
-    status.textContent = '✗ Error: ' + e.message;
-    status.style.color = 'var(--red)';
-  } finally {
-    btn.textContent = '📺 Load Latest TradingView Candles → Analyse';
-    btn.disabled = false;
-  }
-}
-
-
-function copyPine(){
-  const txt = document.getElementById('pine-code').innerText;
-  navigator.clipboard.writeText(txt).then(()=>{
-    const btn = document.getElementById('copy-pine-btn');
-    btn.textContent = '✓ Copied!';
-    btn.style.background = '#16A34A';
-    setTimeout(()=>{ btn.textContent='Copy'; btn.style.background='var(--primary)'; }, 2000);
-  });
-}
-function copyWebhook(){
-  const txt = document.getElementById('webhook-url').innerText;
-  navigator.clipboard.writeText(txt).then(()=>{
-    const btn = document.getElementById('copy-url-btn');
-    btn.textContent = '✓ Copied!';
-    btn.style.background = '#16A34A';
-    setTimeout(()=>{ btn.textContent='Copy URL'; btn.style.background='var(--primary)'; }, 2000);
-  });
-}
 
 function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
 
