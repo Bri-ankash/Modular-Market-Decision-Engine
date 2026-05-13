@@ -1,8 +1,31 @@
-candles = data["Close"]
+def process_candles(data):
+    """
+    Extract closing candle values from various input formats.
 
-if hasattr(candles, "iloc") and hasattr(candles, "shape") and len(candles.shape) > 1:
-    candles = candles.iloc[:, 0]
+    Parameters
+    ----------
+    data : dict
+        Expected to contain a "Close" key with a pandas Series/DataFrame,
+        a list/array of numbers, or a numpy array.
 
-candles = candles.dropna().to_numpy().astype(float)
+    Returns
+    -------
+    List[dict]
+        List of dicts with {"close": float}.
+    """
+    candles = data.get("Close")
+    if candles is None:
+        raise ValueError('Missing "Close" key in data.')
 
-candles = [{"close": float(x)} for x in candles]
+    # If pandas object with multiple columns, take first column
+    if hasattr(candles, "iloc") and hasattr(candles, "shape"):
+        if len(candles.shape) > 1:
+            candles = candles.iloc[:, 0]
+
+    # Convert to 1‑D numpy array of floats, dropping NaNs
+    import numpy as np
+    candles_array = np.asarray(candles).astype(float).ravel()
+    candles_array = candles_array[~np.isnan(candles_array)]
+
+    # Build list of dicts
+    return [{"close": float(x)} for x in candles_array]
