@@ -11,6 +11,10 @@ from mmde_engine import decision_engine
 def dashboard(request):
     from django.conf import settings
     user = request.user
+    # 🔥 FIX: Ensure user has a webhook secret (for older accounts)
+    if not user.webhook_secret:
+        user.save() 
+    
     has_active_subscription = user.has_active_subscription()
     history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
     return render(request, 'dashboard/app.html', {
