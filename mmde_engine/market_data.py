@@ -122,7 +122,7 @@ INTERVAL_MAP = {
 # REALISTIC BASE PRICES for demo mode
 # ═══════════════════════════════════════════════════════
 BASE_PRICES = {
-    'EURUSD':1.0850, 'GBPUSD':1.2650, 'USDJPY':149.50,
+    'EURUSD':1.1710, 'GBPUSD':1.2650, 'USDJPY':149.50,
     'AUDUSD':0.6550, 'USDCHF':0.9050, 'NZDUSD':0.6020,
     'USDCAD':1.3650, 'EURGBP':0.8580, 'EURJPY':162.10,
     'GBPJPY':189.20, 'XAUUSD':2340.0, 'GOLD':2340.0,
