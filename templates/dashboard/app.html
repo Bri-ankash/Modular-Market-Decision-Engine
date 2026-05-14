@@ -348,7 +348,7 @@ async function fetchLive(){
     const yf_map = {
       'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','XAUUSD':'GC=F','GOLD':'GC=F','BTCUSD':'BTC-USD','US30':'YM=F'
     };
-    const ticker = yf_map[symbol.upper()] || (symbol.upper() + '=X');
+    const ticker = yf_map[symbol.toUpperCase()] || (symbol.toUpperCase() + '=X');
     const yf_int = {M1:'1m',M5:'5m',M15:'15m',M30:'30m',H1:'1h',H4:'1h',D1:'1d'}[interval] || '1h';
     const range  = {M1:'1d',M5:'5d',M15:'5d',M30:'30d',H1:'60d',H4:'60d',D1:'365d'}[interval] || '60d';
     
