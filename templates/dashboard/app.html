@@ -341,56 +341,75 @@ async function fetchLive(){
   const msg      = document.getElementById('fetch-msg');
 
   btn.textContent='Fetching...'; btn.disabled=true;
-  msg.textContent=`Connecting to live market for ${symbol}...`; msg.style.color='var(--muted)';
+  msg.textContent=`Connecting to Global Market...`; msg.style.color='var(--muted)';
 
-  // ── Browser-Direct Fetch (Bypasses Server Blocks) ──
-  try {
-    const yf_map = {
-      'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','XAUUSD':'GC=F','GOLD':'GC=F','BTCUSD':'BTC-USD','US30':'YM=F'
-    };
-    const ticker = yf_map[symbol.toUpperCase()] || (symbol.toUpperCase() + '=X');
-    const yf_int = {M1:'1m',M5:'5m',M15:'15m',M30:'30m',H1:'1h',H4:'1h',D1:'1d'}[interval] || '1h';
-    const range  = {M1:'1d',M5:'5d',M15:'5d',M30:'30d',H1:'60d',H4:'60d',D1:'365d'}[interval] || '60d';
-    
-    // Using a reliable CORS proxy to hit Yahoo directly from browser
-    const proxyUrl = 'https://corsproxy.io/?';
-    const targetUrl = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${yf_int}&range=${range}`);
-    
-    const r = await fetch(proxyUrl + targetUrl);
-    if(!r.ok) throw new Error('Market provider busy');
-    
-    const data = await r.json();
-    const result = data.chart.result[0];
-    const quotes = result.indicators.quote[0];
-    const timestamps = result.timestamp;
-    
-    if(!timestamps || !quotes.close) throw new Error('No data returned');
+  const yf_map = {
+    'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','XAUUSD':'GC=F','GOLD':'GC=F','BTCUSD':'BTC-USD','US30':'YM=F'
+  };
+  const ticker = yf_map[symbol.toUpperCase()] || (symbol.toUpperCase() + '=X');
+  const yf_int = {M1:'1m',M5:'5m',M15:'15m',M30:'30m',H1:'1h',H4:'1h',D1:'1d'}[interval] || '1h';
+  const range  = {M1:'1d',M5:'5d',M15:'5d',M30:'30d',H1:'60d',H4:'60d',D1:'365d'}[interval] || '60d';
+  
+  const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${yf_int}&range=${range}`;
+  
+  // 🛡️ RESILIENT PROXY ROTATION
+  const proxies = [
+    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://thingproxy.freeboard.io/fetch/${url}`,
+    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+  ];
 
-    clearRows();
-    let ok = 0;
-    // Process candles
-    const startIdx = Math.max(0, timestamps.length - count);
-    for(let i=startIdx; i<timestamps.length; i++){
-      const o = quotes.open[i], h = quotes.high[i], l = quotes.low[i], c = quotes.close[i], v = quotes.volume[i] || 0;
-      if(o && h && l && c){
-        const date = new Date(timestamps[i]*1000);
-        const ts = date.getHours().toString().padStart(2,'0') + ':' + date.getMinutes().toString().padStart(2,'0');
-        addRow(o.toFixed(5), h.toFixed(5), l.toFixed(5), c.toFixed(5), v, ts);
-        ok++;
+  for(let i=0; i < proxies.length; i++){
+    try {
+      const pUrl = proxies[i](targetUrl);
+      console.log(`Trying proxy ${i+1}...`);
+      const r = await fetch(pUrl);
+      if(!r.ok) continue;
+      
+      let data;
+      if(i === 0){ // AllOrigins returns a wrapper
+        const json = await r.json();
+        data = JSON.parse(json.contents);
+      } else {
+        data = await r.json();
       }
+
+      const result = data.chart.result[0];
+      const quotes = result.indicators.quote[0];
+      const timestamps = result.timestamp;
+      
+      if(!timestamps || !quotes.close) continue;
+
+      clearRows();
+      let ok = 0;
+      const startIdx = Math.max(0, timestamps.length - count);
+      for(let j=startIdx; j<timestamps.length; j++){
+        const o = quotes.open[j], h = quotes.high[j], l = quotes.low[j], c = quotes.close[j], v = quotes.volume[j] || 0;
+        if(o && h && l && c){
+          const date = new Date(timestamps[j]*1000);
+          const ts = date.getHours().toString().padStart(2,'0') + ':' + date.getMinutes().toString().padStart(2,'0');
+          addRow(o.toFixed(5), h.toFixed(5), l.toFixed(5), c.toFixed(5), v, ts);
+          ok++;
+        }
+      }
+      
+      msg.textContent = `✓ Connected via Route ${i+1} (${ok} candles)`;
+      msg.style.color = '#16A34A';
+      switchSrc('manual', document.querySelector('.src-tab'));
+      btn.textContent='Fetch Live Data'; btn.disabled=false;
+      return; // 🎯 SUCCESS!
+
+    } catch(err) {
+      console.warn(`Proxy ${i+1} failed:`, err);
+      continue;
     }
-    
-    msg.textContent = `✓ Loaded ${ok} candles directly from Live Market`;
-    msg.style.color = '#16A34A';
-    switchSrc('manual', document.querySelector('.src-tab'));
-    
-  } catch(e){
-    msg.textContent = '✗ ' + e.message + '. Try the External Feed (MT5) or try again.';
-    msg.style.color = 'var(--red)';
-    console.error('Fetch Error:', e);
-  } finally {
-    btn.textContent='Fetch Live Data'; btn.disabled=false;
   }
+
+  // If we get here, all failed
+  msg.textContent = '✗ Global Market Busy. Use the MT5 Broadcaster for direct chart sync.';
+  msg.style.color = 'var(--red)';
+  btn.textContent='Fetch Live Data'; btn.disabled=false;
 }
 
 async function fetchTVFeed(){
