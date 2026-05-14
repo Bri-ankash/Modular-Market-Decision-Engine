@@ -119,9 +119,15 @@ def market_data_api(request):
         limit    = int(request.GET.get('count', 50))
         limit    = min(max(limit, 5), 200)
 
-        # ── Master Broadcast Check ──
+        # ── Master Broadcast Check (Isolated to User) ──
         recent_cutoff = timezone.now() - timedelta(minutes=15)
-        feed = TradingViewFeed.objects.filter(symbol=symbol, received_at__gte=recent_cutoff).first()
+        # 🔥 FIX: Only use the feed if it belongs to this user or is a verified Global Admin feed
+        feed = TradingViewFeed.objects.filter(
+            symbol=symbol, 
+            received_at__gte=recent_cutoff,
+            user_secret=request.user.webhook_secret
+        ).first()
+        
         if feed:
             feed_candles = json.loads(feed.candles_json)
             if len(feed_candles) >= 3:
