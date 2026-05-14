@@ -175,7 +175,15 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
     except Exception as e:
         print(f"⚠️ [Yahoo HTTP] Failed for {ticker_sym}: {e}")
 
-    # ── Source 3: yfinance (Reliable but slower) ──
+    # ── Source 3: Stooq (Excellent fallback for Forex/Gold) ──
+    try:
+        result = _fetch_stooq(symbol, interval, limit)
+        if result and result.get('count', 0) > 0:
+            return result
+    except Exception as e:
+        print(f"⚠️ [Stooq] Failed for {symbol}: {e}")
+
+    # ── Source 4: yfinance (Reliable but slower) ──
     try:
         result = _fetch_yfinance(ticker_sym, symbol, yf_int, yf_period, limit, interval)
         if result and result.get('count', 0) > 0:
@@ -183,8 +191,8 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
     except Exception as e:
         print(f"⚠️ [yfinance] Failed for {ticker_sym}: {e}")
 
-    # ── PRODUCTION ERROR (No more hidden demo data for live requests) ──
-    raise ValueError(f"Could not connect to live market for {symbol}. Check your internet connection or try again in a moment.")
+    # ── FINAL PRODUCTION ERROR ──
+    raise ValueError(f"Market connection busy. Please try again in 5 seconds or use the 'External Feed' from your chart.")
 
 
 # ═══════════════════════════════════════════════════════
@@ -427,6 +435,55 @@ def _fetch_http(ticker_sym, symbol, yf_interval, yf_period, limit):
             continue
 
     raise ValueError(f'All HTTP endpoints failed. Last: {last_error}')
+
+
+def _fetch_stooq(symbol, interval, limit):
+    """
+    Stooq.com is a very reliable fallback for OHLC data.
+    """
+    import requests
+    import pandas as pd
+    import io
+
+    # Map interval to Stooq format (d=daily, h=hourly, 5m=5min)
+    stooq_int = 'h' if interval.startswith('H') else ('d' if interval.startswith('D') else '5m')
+    
+    # Map symbol
+    s_map = {'EURUSD':'EURUSD', 'GBPUSD':'GBPUSD', 'XAUUSD':'XAUUSD', 'GOLD':'XAUUSD', 'BTCUSD':'BTCUSD'}
+    s = s_map.get(symbol.upper(), symbol.lower())
+    
+    url = f"https://stooq.com/q/d/l/?s={s}&i={stooq_int}"
+    
+    resp = requests.get(url, timeout=10)
+    if resp.status_code != 200:
+        return None
+        
+    df = pd.read_csv(io.StringIO(resp.text))
+    if df.empty or 'Close' not in df.columns:
+        return None
+        
+    df = df.tail(limit)
+    candles = []
+    for _, row in df.iterrows():
+        candles.append({
+            'timestamp': str(row.get('Date', row.get('Time', ''))),
+            'open':  float(row['Open']),
+            'high':  float(row['High']),
+            'low':   float(row['Low']),
+            'close': float(row['Close']),
+            'volume': int(row.get('Volume', 0))
+        })
+        
+    return {
+        'candles':    candles,
+        'symbol':     symbol.upper(),
+        'interval':   interval,
+        'source':     'Stooq Global Feed',
+        'count':      len(candles),
+        'last_price': candles[-1]['close'],
+        'change_pct': 0.0,
+        'currency':   ''
+    }
 
 
 # ═══════════════════════════════════════════════════════
