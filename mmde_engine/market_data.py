@@ -166,31 +166,6 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
     ticker_sym = SYMBOL_MAP.get(symbol.upper(), symbol)
     yf_int, yf_period = INTERVAL_MAP.get(interval, ('1h', '60d'))
 
-    # ── Source 0: Global TradingView Feed (Admin Broadcast) ──
-    try:
-        from mmde_gateway.models import TradingViewFeed
-        # Look for the most recent data for this symbol from the last 15 minutes
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_cutoff = timezone.now() - timedelta(minutes=15)
-        feed = TradingViewFeed.objects.filter(symbol=symbol.upper(), received_at__gte=recent_cutoff).first()
-        if feed:
-            import json
-            candles = json.loads(feed.candles_json)
-            if len(candles) >= 3:
-                print(f"✅ [TV-Global] Using Admin's TradingView feed for {symbol}")
-                return {
-                    'candles': candles[:limit],
-                    'symbol': symbol.upper(),
-                    'interval': feed.interval,
-                    'source': 'Admin TradingView Feed',
-                    'count': len(candles),
-                    'last_price': candles[-1]['close'],
-                    'change_pct': 0.0
-                }
-    except Exception as e:
-        print(f"⚠️ [TV-Global] Check failed: {e}")
-
     # ── Source 1: yfinance (best quality) ──
     try:
         result = _fetch_yfinance(ticker_sym, symbol, yf_int, yf_period, limit, interval)

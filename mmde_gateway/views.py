@@ -104,11 +104,34 @@ def market_data_api(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Authentication required', 'login_url': '/login/'}, status=401)
     from mmde_engine.market_data import fetch
+    from .models import TradingViewFeed
+    from django.utils import timezone
+    from datetime import timedelta
+    import json
+
     try:
         symbol   = request.GET.get('symbol', 'EURUSD').upper().strip()
         interval = request.GET.get('interval', 'H1').strip()
         limit    = int(request.GET.get('count', 50))
         limit    = min(max(limit, 5), 200)
+
+        # ── Master Broadcast Check ──
+        recent_cutoff = timezone.now() - timedelta(minutes=15)
+        feed = TradingViewFeed.objects.filter(symbol=symbol, received_at__gte=recent_cutoff).first()
+        if feed:
+            feed_candles = json.loads(feed.candles_json)
+            if len(feed_candles) >= 3:
+                return JsonResponse({
+                    'candles':    feed_candles[:limit],
+                    'symbol':     symbol,
+                    'interval':   feed.interval,
+                    'source':     'Admin TradingView Broadcast',
+                    'count':      len(feed_candles),
+                    'last_price': feed_candles[-1]['close'],
+                    'change_pct': 0.0
+                })
+
+        # Fallback to external fetch
         result   = fetch(symbol, interval, limit)
         return JsonResponse(result)
     except Exception as e:
