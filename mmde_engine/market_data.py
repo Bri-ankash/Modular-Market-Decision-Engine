@@ -168,7 +168,7 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
 
     # ── Source 0: Global TradingView Feed (Admin Broadcast) ──
     try:
-        from .models import TradingViewFeed
+        from mmde_gateway.models import TradingViewFeed
         # Look for the most recent data for this symbol from the last 15 minutes
         from django.utils import timezone
         from datetime import timedelta
