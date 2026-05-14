@@ -17,22 +17,22 @@ class Migration(migrations.Migration):
         #     name='is_active_subscription',
         #     field=models.BooleanField(default=False),
         # ),
-        migrations.AddField(
-            model_name='mmdeuser',
-            name='allowed_markets',
-            field=models.JSONField(default=list),
-        ),
-        migrations.AddField(
-            model_name='mmdeuser',
-            name='subscription_expires',
-            field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='mmdeuser',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default='2026-05-14 00:00:00'),
-            preserve_default=False,
-        ),
+        # migrations.AddField(
+        #     model_name='mmdeuser',
+        #     name='allowed_markets',
+        #     field=models.JSONField(default=list),
+        # ),
+        # migrations.AddField(
+        #     model_name='mmdeuser',
+        #     name='subscription_expires',
+        #     field=models.DateTimeField(blank=True, null=True),
+        # ),
+        # migrations.AddField(
+        #     model_name='mmdeuser',
+        #     name='created_at',
+        #     field=models.DateTimeField(auto_now_add=True, default='2026-05-14 00:00:00'),
+        #     preserve_default=False,
+        # ),
         migrations.AlterField(
             model_name='mmdeuser',
             name='subscription_plan',
