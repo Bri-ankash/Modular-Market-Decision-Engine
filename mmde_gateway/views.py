@@ -136,9 +136,10 @@ def tradingview_webhook(request):
         or request.GET.get('secret')
         or request.POST.get('secret')
     )
-    configured_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
-    if configured_secret and provided_secret != configured_secret:
-        return JsonResponse({'error': 'Unauthorized webhook request'}, status=401)
+    from users.models import MMDEUser
+    user = MMDEUser.objects.filter(webhook_secret=provided_secret).first()
+    if not user:
+        return JsonResponse({'error': 'Invalid secret. Webhook unauthorized.'}, status=401)
 
     try:
         data = json.loads(request.body)
@@ -177,13 +178,14 @@ def tradingview_webhook(request):
 @login_required(login_url='/login/')
 def get_tv_feed(request):
     """Dashboard polls this to get latest TradingView candles"""
-    from django.conf import settings
     from .models import TradingViewFeed
-    configured_secret = (settings.TRADINGVIEW_WEBHOOK_SECRET or '').strip()
-    lookup_secret = configured_secret or 'default'
+    lookup_secret = request.user.webhook_secret
+    if not lookup_secret:
+        return JsonResponse({'found': False, 'message': 'No webhook secret configured for your account.'})
+    
     feed = TradingViewFeed.objects.filter(user_secret=lookup_secret).first()
     if not feed:
-        return JsonResponse({'found': False, 'message': 'No data received from TradingView yet.'})
+        return JsonResponse({'found': False, 'message': 'No data received from TradingView yet for your secret.'})
     return JsonResponse({
         'found':    True,
         'symbol':   feed.symbol,

@@ -72,6 +72,7 @@ def run(candles: list, symbol: str = 'UNKNOWN', selected_modules: list = None,
 
     buy_score  = 0.0
     sell_score = 0.0
+    active_w   = 0.0
     total_w    = 0.0
 
     for s in signals:
@@ -79,44 +80,57 @@ def run(candles: list, symbol: str = 'UNKNOWN', selected_modules: list = None,
         w   = weights.get(mod, 1.0)
         c   = s.get('confidence', 0.5)
         sig = s.get('signal', 'NEUTRAL')
+        
         if sig == 'BUY':
-            buy_score  += w * c
+            buy_score += w * c
+            active_w  += w
         elif sig == 'SELL':
             sell_score += w * c
+            active_w   += w
+        
         total_w += w
 
+    # Calculate percentages based on active signals vs total weight
+    # This prevents 'Neutral' modules from washing out strong signals
     buy_pct  = buy_score  / total_w if total_w else 0
     sell_pct = sell_score / total_w if total_w else 0
-
+    
     # ── MARKET STRUCTURE ─────────────────────────────────────
     structure = _market_structure(clean, closes, highs, lows)
     personality = structure['type']
 
     # Boost scores based on structure
-    if personality == 'trending_up':   buy_pct  *= 1.15
-    if personality == 'trending_down': sell_pct *= 1.15
-    if personality == 'manipulation':
-        buy_pct  *= 0.75
-        sell_pct *= 0.75
+    if personality == 'trending_up':   buy_pct  *= 1.20
+    if personality == 'trending_down': sell_pct *= 1.20
 
     # ── FINAL DECISION ───────────────────────────────────────
     diff = abs(buy_pct - sell_pct)
 
-    if buy_pct > sell_pct and buy_pct > 0.35 and diff > 0.08:
+    # Power Thresholds (Aggressive but safe)
+    # If we have a 15%+ margin, we should likely be trading
+    if buy_pct > sell_pct and (buy_pct > 0.18 or diff > 0.12):
         action      = 'BUY'
-        confidence  = min(0.95, buy_pct * 1.1)
-    elif sell_pct > buy_pct and sell_pct > 0.35 and diff > 0.08:
+        confidence  = min(0.95, buy_pct * 1.5) # Scale up confidence for display
+    elif sell_pct > buy_pct and (sell_pct > 0.18 or diff > 0.12):
         action      = 'SELL'
-        confidence  = min(0.95, sell_pct * 1.1)
+        confidence  = min(0.95, sell_pct * 1.5)
     elif diff < 0.05:
         action      = 'NO TRADE'
-        confidence  = 0.30
+        confidence  = 0.20
     else:
         action      = 'WAIT'
-        confidence  = 0.40
+        confidence  = 0.30
+
+    # Low confidence warning
+    caution_msg = ""
+    if action in ['BUY', 'SELL'] and confidence < 0.55:
+        caution_msg = " ⚠️ CAUTION: Moderate confluence. Manage risk carefully."
+    elif action in ['BUY', 'SELL'] and confidence >= 0.55:
+        caution_msg = " ✅ STRONG CONFLUENCE: High probability setup detected."
 
     # ── RISK ENGINE — Entry / SL / TP ────────────────────────
-    risk = _risk_engine(clean, closes, highs, lows, current, action, symbol)
+    interval = params.get('interval', 'H1').upper()
+    risk = _risk_engine(clean, closes, highs, lows, current, action, symbol, interval)
 
     # ── REASONS ──────────────────────────────────────────────
     reasons = [s['reason'] for s in signals
@@ -152,8 +166,8 @@ def run(candles: list, symbol: str = 'UNKNOWN', selected_modules: list = None,
         'sell_score':       round(sell_pct, 3),
         'conflict':         {'reason': _conflict_reason(buy_pct, sell_pct, action)},
         'duration_ms':      duration_ms,
-        'warning':          '' if action in ['WAIT','NO TRADE'] else
-                            '⚠ Verify on your chart before executing. Manage risk — 1-2% max per trade.',
+        'warning':          caution_msg if action not in ['WAIT','NO TRADE'] else
+                            'No clear signal yet. Wait for a better setup.',
     }
 
 
@@ -537,11 +551,24 @@ def _market_structure(candles, closes, highs, lows):
             'description':'Price ranging between support and resistance. Fade extremes — buy lows, sell highs. Avoid breakout trades.'}
 
 
-def _risk_engine(candles, closes, highs, lows, current, action, symbol):
+def _risk_engine(candles, closes, highs, lows, current, action, symbol, interval):
     """Calculate precise entry, SL, TP based on ATR and key levels"""
     n   = len(candles)
     trs = [candles[i]['high']-candles[i]['low'] for i in range(n)]
     atr = sum(trs[-min(14,n):]) / min(14,n) if trs else current * 0.001
+
+    # Timeframe adjustment
+    # Lower timeframes (M1-M30) need tighter stops. Higher (D1, W1) need breathing room.
+    tf_mult = {
+        'M1': 1.2, 'M5': 1.3, 'M15': 1.5, 'M30': 1.5,
+        'H1': 2.0, 'H4': 2.2, 'D1': 2.5, 'W1': 3.0
+    }.get(interval, 2.0)
+
+    # Lookback for swing highs/lows also scales with timeframe
+    lb = {
+        'M1': 5, 'M5': 8, 'M15': 10, 'M30': 12,
+        'H1': 15, 'H4': 20, 'D1': 30, 'W1': 40
+    }.get(interval, 15)
 
     # Detect if forex (price < 50) or crypto/index/stock
     is_forex  = current < 50
@@ -549,33 +576,41 @@ def _risk_engine(candles, closes, highs, lows, current, action, symbol):
     is_index  = current > 4000
     is_crypto = 'BTC' in symbol.upper() or 'ETH' in symbol.upper() or current > 10000
 
-    # SL distance: 1.5 × ATR (giving room)
-    sl_dist = atr * 1.5
-    tp_dist = atr * 2.5   # TP1: 2.5R
-    tp2_dist= atr * 4.0   # TP2: 4R (let winners run)
+    # SL distance: tf_mult × ATR
+    sl_dist = atr * tf_mult
+    tp_dist = atr * (tf_mult * 1.5)   # Target at least 1.5x risk
+    tp2_dist= atr * (tf_mult * 2.5)   # Runner at 2.5x risk
 
     # Round to sensible decimals
     dec = 5 if is_forex else (2 if is_gold else (0 if is_index or is_crypto else 2))
 
     if action == 'BUY':
-        # Entry: current price or slight pullback
         entry = round(current, dec)
-        sl    = round(current - sl_dist, dec)
+        # Use swing low for SL if it's within a reasonable distance, otherwise use ATR
+        recent_low = min(lows[-min(lb, n):])
+        sl_candidate = round(recent_low - atr * 0.2, dec)
+        
+        # If swing low is too far (> 2x ATR dist), cap it at ATR dist
+        if (current - sl_candidate) > sl_dist * 1.5:
+            sl = round(current - sl_dist, dec)
+        else:
+            sl = sl_candidate
+            
         tp1   = round(current + tp_dist, dec)
         tp2   = round(current + tp2_dist, dec)
-        # Better SL: just below recent swing low
-        recent_low = min(lows[-min(5,n):])
-        if recent_low < current and (current - recent_low) < sl_dist * 1.5:
-            sl = round(recent_low - atr * 0.3, dec)
+
     elif action == 'SELL':
         entry = round(current, dec)
-        sl    = round(current + sl_dist, dec)
+        recent_high = max(highs[-min(lb, n):])
+        sl_candidate = round(recent_high + atr * 0.2, dec)
+
+        if (sl_candidate - current) > sl_dist * 1.5:
+            sl = round(current + sl_dist, dec)
+        else:
+            sl = sl_candidate
+
         tp1   = round(current - tp_dist, dec)
         tp2   = round(current - tp2_dist, dec)
-        # Better SL: just above recent swing high
-        recent_high = max(highs[-min(5,n):])
-        if recent_high > current and (recent_high - current) < sl_dist * 1.5:
-            sl = round(recent_high + atr * 0.3, dec)
     else:
         return {
             'entry': str(round(current, dec)),

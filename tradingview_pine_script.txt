@@ -1,0 +1,28 @@
+// MMDE TradingView Connector (Pine Script v5)
+// Paste this into your TradingView Pine Editor
+// Set an alert using this indicator and point the Webhook URL to your MMDE instance
+
+//@version=5
+indicator("MMDE Candle Exporter", overlay=true)
+
+// Settings
+secret = input.string("default", "MMDE Secret")
+symbol = input.string("", "Symbol Override (leave blank for chart symbol)")
+market = input.string("forex", "Market Type", options=["forex", "gold", "indices", "crypto", "stocks"])
+
+// Format the JSON payload
+var string symbol_name = symbol == "" ? syminfo.tickerid : symbol
+string json_candles = "["
+for i = 19 to 0
+    json_candles := json_candles + '{"time":"' + str.tostring(time[i]) + '","open":' + str.tostring(open[i]) + ',"high":' + str.tostring(high[i]) + ',"low":' + str.tostring(low[i]) + ',"close":' + str.tostring(close[i]) + ',"volume":' + str.tostring(volume[i]) + '}'
+    if i > 0
+        json_candles := json_candles + ","
+json_candles := json_candles + "]"
+
+string payload = '{"secret":"' + secret + '","symbol":"' + symbol_name + '","interval":"' + timeframe.period + '","market":"' + market + '","candles":' + json_candles + '}'
+
+// Alert trigger
+if barstate.islast
+    alert(payload, alert.freq_once_per_bar_close)
+
+plot(close, color=color.new(color.blue, 100))

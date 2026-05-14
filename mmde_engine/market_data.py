@@ -168,24 +168,31 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
 
     # ── Source 1: yfinance (best quality) ──
     try:
-        result = _fetch_yfinance(ticker_sym, symbol, yf_int, yf_period, limit)
-        if result['count'] > 0:
-            logger.info(f"[yfinance] {symbol} {interval}: {result['count']} candles")
+        result = _fetch_yfinance(ticker_sym, symbol, yf_int, yf_period, limit, interval)
+        if result and result.get('count', 0) > 0:
             return result
     except Exception as e:
-        logger.warning(f"[yfinance] {ticker_sym}: {e}")
+        print(f"⚠️ [yfinance] Failed for {ticker_sym}: {e}")
+
+    # ── Smart Retry for common symbols ──
+    if symbol.upper() in ['XAUUSD', 'GOLD'] and ticker_sym != 'XAUUSD=X':
+        try:
+            print(f"🔄 Retrying with alternative ticker XAUUSD=X...")
+            result = _fetch_yfinance('XAUUSD=X', symbol, yf_int, yf_period, limit, interval)
+            if result and result.get('count', 0) > 0:
+                return result
+        except: pass
 
     # ── Source 2: Yahoo direct HTTP ──
     try:
         result = _fetch_http(ticker_sym, symbol, yf_int, yf_period, limit)
-        if result['count'] > 0:
-            logger.info(f"[Yahoo HTTP] {symbol} {interval}: {result['count']} candles")
+        if result and result.get('count', 0) > 0:
             return result
     except Exception as e:
-        logger.warning(f"[Yahoo HTTP] {ticker_sym}: {e}")
+        print(f"⚠️ [Yahoo HTTP] Failed for {ticker_sym}: {e}")
 
-    # ── Source 3: Demo data ──
-    logger.warning(f"[market_data] All sources failed for {symbol} — using demo data")
+    # ── Source 3: Demo data fallback ──
+    print(f"❌ [market_data] All real sources failed for {symbol}. Falling back to DEMO data.")
     return _fetch_demo(symbol, interval, limit)
 
 
@@ -193,7 +200,7 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
 # SOURCE 1 — yfinance (full pandas processing)
 # ═══════════════════════════════════════════════════════
 
-def _fetch_yfinance(ticker_sym, symbol, yf_interval, yf_period, limit):
+def _fetch_yfinance(ticker_sym, symbol, yf_interval, yf_period, limit, original_interval):
     import yfinance as yf
     import pandas as pd
     import numpy as np
@@ -238,6 +245,17 @@ def _fetch_yfinance(ticker_sym, symbol, yf_interval, yf_period, limit):
     ]
 
     # ── Take last limit candles ──
+    # If H4, resample H1 data
+    if original_interval.upper() == 'H4' and yf_interval == '1h':
+        df.index = pd.to_datetime(df.index)
+        df = df.resample('4H').agg({
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum'
+        }).dropna()
+
     df = df.tail(limit).copy()
 
     if df.empty:

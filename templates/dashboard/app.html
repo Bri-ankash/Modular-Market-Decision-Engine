@@ -111,6 +111,7 @@
           <div style="display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border)">
             <button class="src-tab" onclick="switchSrc('manual',this)">✏ Manual</button>
             <button class="src-tab" onclick="switchSrc('csv',this)">📋 Paste CSV</button>
+            <button class="src-tab" onclick="switchSrc('tradingview',this)">🌐 TradingView</button>
             <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live</button>
           </div>
         </div>
@@ -150,6 +151,22 @@
           </div>
         </div>
 
+        <!-- TRADINGVIEW -->
+        <div class="src-panel" id="src-tradingview">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
+            🌐 <strong>Sync with TradingView:</strong> Link your TradingView alerts to MMDE.<br/>
+            1. Set your webhook URL in TradingView to:<br/>
+            <code style="background:var(--border);padding:4px 8px;border-radius:5px;display:block;margin:5px 0;font-size:11px" id="webhook-url">https://{{ request.get_host }}/api/mmde/tv-webhook</code>
+            2. In your Pine Script alert, include your secret:<br/>
+            <code style="background:var(--border);padding:2px 6px;border-radius:4px;font-weight:700">{{ user.webhook_secret }}</code><br/>
+            3. Click the button below to pull the latest candles.
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button onclick="fetchTVFeed()" id="tv-btn" class="btn btn-primary" style="padding:10px 22px;background:#2962FF;border-color:#2962FF">Sync from TradingView</button>
+            <div id="tv-msg" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+        </div>
+
         <!-- LIVE FETCH -->
         <div class="src-panel active" id="src-live">
           <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
@@ -160,8 +177,10 @@
             <div>
               <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Candles to fetch</div>
               <select id="live-count" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Lato',sans-serif;outline:none;background:var(--surface2);color:var(--text)">
-                <option value="20">20</option><option value="30">30</option>
-                <option value="50" selected>50</option><option value="100">100</option>
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="30">30</option>
+                <option value="50">50</option><option value="100">100</option>
               </select>
             </div>
             <button onclick="fetchLive()" id="fetch-btn" class="btn btn-primary" style="padding:10px 22px">Fetch Live Data</button>
@@ -344,6 +363,36 @@ async function fetchLive(){
     msg.textContent='✗ '+e.message; msg.style.color='var(--red)';
   } finally {
     btn.textContent='Fetch Live Data'; btn.disabled=false;
+  }
+}
+
+async function fetchTVFeed(){
+  const btn = document.getElementById('tv-btn');
+  const msg = document.getElementById('tv-msg');
+  btn.textContent = 'Checking...'; btn.disabled = true;
+  msg.textContent = 'Polling latest candles from gateway...';
+  
+  try {
+    const r = await fetch('/api/mmde/get-tv-feed');
+    const d = await r.json();
+    if(!d.found){
+      msg.textContent = '✗ ' + (d.message || 'No data found');
+      msg.style.color = 'var(--red)';
+      return;
+    }
+    // Load candles into manual grid
+    clearRows();
+    d.candles.forEach(c => addRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp || ''));
+    document.getElementById('symbol').value = d.symbol;
+    document.getElementById('interval').value = d.interval;
+    msg.textContent = `✓ Loaded ${d.candles.length} candles for ${d.symbol} (${d.interval})`;
+    msg.style.color = 'var(--green)';
+    switchSrc('manual', document.querySelector('.src-tab'));
+  } catch(e) {
+    msg.textContent = '✗ Error: ' + e.message;
+    msg.style.color = 'var(--red)';
+  } finally {
+    btn.textContent = 'Sync from TradingView'; btn.disabled = false;
   }
 }
 

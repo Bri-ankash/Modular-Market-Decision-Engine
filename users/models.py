@@ -38,6 +38,7 @@ class MMDEUser(AbstractUser):
     is_active_subscription = models.BooleanField(default=False)
     allowed_markets = models.JSONField(default=list)
     subscription_expires = models.DateTimeField(null=True, blank=True)
+    webhook_secret = models.CharField(max_length=50, unique=True, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # IMPORTANT: email login
@@ -81,6 +82,9 @@ class MMDEUser(AbstractUser):
 
 
     def save(self, *args, **kwargs):
+        if not self.webhook_secret:
+            import uuid
+            self.webhook_secret = uuid.uuid4().hex[:16].upper()
         self.allowed_markets = self.get_allowed_markets()
         super().save(*args, **kwargs)
 

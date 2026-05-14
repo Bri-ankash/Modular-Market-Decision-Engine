@@ -1,34 +1,47 @@
-import yfinance as yf
+import os
+import sys
+import django
 
-from mmde_engine.backtest_engine import run_backtest
-from mmde_engine.metrics import sharpe, max_drawdown
-from mmde_engine.baseline import random_strategy
+# Setup Django environment
+sys.path.append(os.getcwd())
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
 
-symbols = ["EURUSD=X", "BTC-USD", "AAPL"]
+from mmde_engine import market_data, decision_engine
 
-for s in symbols:
+def test_timeframes(symbol='XAUUSD'):
+    timeframes = ['H1', 'H4', 'D1']
+    results = {}
 
-    df = yf.download(s, period="10d", interval="1h", progress=False)
+    print(f"\n🚀 Testing Timeframe Consistency for {symbol}")
+    print("=" * 50)
 
-    close_series = df["Close"]
-    if hasattr(close_series, "iloc") and len(getattr(close_series, "shape", [])) > 1:
-        close_series = close_series.iloc[:, 0]
-    candles = [{"close": float(x)} for x in close_series.dropna().tolist()]
+    for tf in timeframes:
+        print(f"Fetching {tf} data...")
+        data = market_data.fetch(symbol, tf, limit=50)
+        
+        print(f"Running analysis for {tf}...")
+        res = decision_engine.run(
+            candles=data['candles'],
+            symbol=symbol,
+            params={'interval': tf}
+        )
+        
+        results[tf] = res
+        print(f"✅ {tf} Analysis Complete: {res['action']} at {res['confidence_pct']} confidence.")
+        print(f"   Entry: {res['entry_zone']} | SL: {res['stop_loss']} | TP1: {res['take_profit'][0]}")
+        print("-" * 50)
 
-    result = run_backtest(candles)
+    # Comparison Check
+    h1_sl = results['H1']['stop_loss']
+    d1_sl = results['D1']['stop_loss']
+    
+    if h1_sl != d1_sl:
+        print("\n✨ SUCCESS: Stop Loss levels are DIFFERENT across timeframes.")
+        print(f"   H1 SL: {h1_sl}")
+        print(f"   D1 SL: {d1_sl}")
+    else:
+        print("\n❌ WARNING: Stop Loss levels are the same. Check logic.")
 
-    returns = [
-        result["equity_curve"][i] - result["equity_curve"][i-1]
-        for i in range(1, len(result["equity_curve"]))
-    ]
-
-    print("\n======================")
-    print("SYMBOL:", s)
-    print("FINAL EQUITY:", result["final_equity"])
-    print("WINS:", result["wins"])
-    print("LOSSES:", result["losses"])
-    print("SHARPE:", sharpe(returns))
-    print("MAX DRAWDOWN:", max_drawdown(result["equity_curve"]))
-
-    baseline = random_strategy(candles)
-    print("RANDOM BASELINE:", baseline)
+if __name__ == "__main__":
+    test_timeframes()
