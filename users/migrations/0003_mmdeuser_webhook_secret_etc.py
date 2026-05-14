@@ -12,11 +12,11 @@ class Migration(migrations.Migration):
             name='webhook_secret',
             field=models.CharField(blank=True, max_length=50, null=True, unique=True),
         ),
-        migrations.AddField(
-            model_name='mmdeuser',
-            name='is_active_subscription',
-            field=models.BooleanField(default=False),
-        ),
+        # migrations.AddField(
+        #     model_name='mmdeuser',
+        #     name='is_active_subscription',
+        #     field=models.BooleanField(default=False),
+        # ),
         migrations.AddField(
             model_name='mmdeuser',
             name='allowed_markets',
