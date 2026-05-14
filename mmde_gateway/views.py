@@ -9,30 +9,22 @@ from mmde_engine import decision_engine
 
 @login_required(login_url='/login/')
 def dashboard(request):
-    try:
-        from django.conf import settings
-        user = request.user
-        has_active_subscription = user.has_active_subscription()
-        history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
-        return render(request, 'dashboard/app.html', {
-            'user': user,
-            'history': history,
-            'markets': settings.ALL_MARKETS,
-            'has_active_subscription': has_active_subscription,
-            'allowed_markets': user.allowed_markets if has_active_subscription else [],
-            'modules': [
-                'structure','liquidity','trap_detection',
-                'price_action','imbalance','volume',
-                'momentum','volatility','session',
-            ],
-        })
-    except Exception as e:
-        import traceback
-        return JsonResponse({
-            'error': 'Dashboard Error',
-            'detail': str(e),
-            'trace': traceback.format_exc()
-        }, status=500)
+    from django.conf import settings
+    user = request.user
+    has_active_subscription = user.has_active_subscription()
+    history = AnalysisRequest.objects.filter(user=user).order_by('-created_at')[:20]
+    return render(request, 'dashboard/app.html', {
+        'user': user,
+        'history': history,
+        'markets': settings.ALL_MARKETS,
+        'has_active_subscription': has_active_subscription,
+        'allowed_markets': user.allowed_markets if has_active_subscription else [],
+        'modules': [
+            'structure','liquidity','trap_detection',
+            'price_action','imbalance','volume',
+            'momentum','volatility','session',
+        ],
+    })
 
 
 def analyze(request):
