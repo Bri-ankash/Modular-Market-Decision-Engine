@@ -402,9 +402,9 @@ function copyPineScript(){
 //@version=5
 indicator("MMDE Candle Exporter", overlay=true)
 
-// Config
-secret_key = input.string("YOUR_SECRET_HERE", "MMDE Webhook Secret")
-webhook_url = input.string("https://your-domain.com/api/mmde/tv-webhook", "MMDE Webhook URL")
+// Config (Automatically filled for your account)
+secret_key = input.string("{{ user.webhook_secret }}", "MMDE Webhook Secret")
+webhook_url = input.string("https://{{ request.get_host }}/api/mmde/tv-webhook", "MMDE Webhook URL")
 
 // Logic to send data on candle close
 if barstate.isconfirmed
