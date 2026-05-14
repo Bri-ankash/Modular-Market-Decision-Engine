@@ -109,10 +109,10 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
           <div style="font-size:14px;font-weight:700;color:var(--text)">Feed Market Data</div>
           <div style="display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border)">
+            <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live Feed</button>
             <button class="src-tab" onclick="switchSrc('manual',this)">✏ Manual</button>
-            <button class="src-tab" onclick="switchSrc('csv',this)">📋 Paste CSV</button>
-            <button class="src-tab" onclick="switchSrc('tradingview',this)">🌐 TradingView</button>
-            <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live</button>
+            <button class="src-tab" onclick="switchSrc('tradingview',this)">📡 External (MT5/TV)</button>
+            <button class="src-tab" onclick="switchSrc('csv',this)">📋 CSV</button>
           </div>
         </div>
 
@@ -129,8 +129,7 @@
           <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
             <button onclick="addRow()" style="background:rgba(91,79,207,0.08);border:1px solid var(--primary);color:var(--primary);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">+ Row</button>
             <button onclick="addRows(10)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">+ 10 Rows</button>
-            <button onclick="clearRows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Clear</button>
-            <button onclick="loadSample()" style="background:rgba(22,163,74,0.08);border:1px solid #16A34A;color:#16A34A;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif;font-weight:700">Load EURUSD Sample</button>
+            <button onclick="clearRows()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif">Clear Grid</button>
           </div>
           <div id="row-count" style="font-size:11px;color:var(--muted);margin-top:7px">0 candles</div>
         </div>
@@ -237,6 +236,8 @@ function selectMkt(m, btn){
   btn.classList.add('active');
   const sym = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
   document.getElementById('symbol').value = sym[m] || '';
+  // 🔥 AUTO-FETCH LIVE DATA
+  fetchLive();
 }
 
 // ── SOURCE TABS ──

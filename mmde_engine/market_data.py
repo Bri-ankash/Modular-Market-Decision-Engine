@@ -166,7 +166,16 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
     ticker_sym = SYMBOL_MAP.get(symbol.upper(), symbol)
     yf_int, yf_period = INTERVAL_MAP.get(interval, ('1h', '60d'))
 
-    # ── Source 1: yfinance (best quality) ──
+    # ── Source 2: Yahoo direct HTTP (Undocumented fast API) ──
+    try:
+        result = _fetch_http(ticker_sym, symbol, yf_int, yf_period, limit)
+        if result and result.get('count', 0) > 0:
+            result['source'] = f"Real-time {result['source']}"
+            return result
+    except Exception as e:
+        print(f"⚠️ [Yahoo HTTP] Failed for {ticker_sym}: {e}")
+
+    # ── Source 3: yfinance (Reliable but slower) ──
     try:
         result = _fetch_yfinance(ticker_sym, symbol, yf_int, yf_period, limit, interval)
         if result and result.get('count', 0) > 0:
@@ -174,26 +183,8 @@ def fetch(symbol: str, interval: str = 'H1', limit: int = 50) -> dict:
     except Exception as e:
         print(f"⚠️ [yfinance] Failed for {ticker_sym}: {e}")
 
-    # ── Smart Retry for common symbols ──
-    if symbol.upper() in ['XAUUSD', 'GOLD'] and ticker_sym != 'XAUUSD=X':
-        try:
-            print(f"🔄 Retrying with alternative ticker XAUUSD=X...")
-            result = _fetch_yfinance('XAUUSD=X', symbol, yf_int, yf_period, limit, interval)
-            if result and result.get('count', 0) > 0:
-                return result
-        except: pass
-
-    # ── Source 2: Yahoo direct HTTP ──
-    try:
-        result = _fetch_http(ticker_sym, symbol, yf_int, yf_period, limit)
-        if result and result.get('count', 0) > 0:
-            return result
-    except Exception as e:
-        print(f"⚠️ [Yahoo HTTP] Failed for {ticker_sym}: {e}")
-
-    # ── Source 3: Demo data fallback ──
-    print(f"❌ [market_data] All real sources failed for {symbol}. Falling back to DEMO data.")
-    return _fetch_demo(symbol, interval, limit)
+    # ── PRODUCTION ERROR (No more hidden demo data for live requests) ──
+    raise ValueError(f"Could not connect to live market for {symbol}. Check your internet connection or try again in a moment.")
 
 
 # ═══════════════════════════════════════════════════════
