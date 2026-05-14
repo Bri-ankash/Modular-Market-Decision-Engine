@@ -353,61 +353,80 @@ async function fetchLive(){
   const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${yf_int}&range=${range}`;
   
   // 🛡️ RESILIENT PROXY ROTATION
-  const proxies = [
-    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    url => `https://thingproxy.freeboard.io/fetch/${url}`,
-    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+  // 🛡️ TRIPLE-SOURCE ROTATION
+  const sources = [
+    // Source 1: Yahoo Finance via Proxies
+    {
+      name: 'Yahoo Finance',
+      getUrls: (ticker, int, rng) => [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`,
+        `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`
+      ],
+      parser: async (r, idx) => {
+        let data = await r.json();
+        if(idx === 0) data = JSON.parse(data.contents);
+        const res = data.chart.result[0];
+        const q = res.indicators.quote[0];
+        return res.timestamp.map((ts, i) => ({
+          o: q.open[i], h: q.high[i], l: q.low[i], c: q.close[i], v: q.volume[i],
+          t: new Date(ts*1000).getHours().toString().padStart(2,'0') + ':' + new Date(ts*1000).getMinutes().toString().padStart(2,'0')
+        }));
+      }
+    },
+    // Source 2: Twelve Data (Direct Public API)
+    {
+      name: 'Twelve Data',
+      getUrls: (ticker, int) => {
+        const s = ticker.replace('=X','').replace('/','');
+        const i = { '1h':'1h', '1m':'1min', '5m':'5min', '15m':'15min', '1d':'1day' }[int] || '1h';
+        return [`https://api.twelvedata.com/time_series?symbol=${s}&interval=${i}&outputsize=50&apikey=demo`];
+      },
+      parser: async (r) => {
+        const data = await r.json();
+        if(data.status === 'error') throw new Error(data.message);
+        return data.values.map(v => ({
+          o: parseFloat(v.open), h: parseFloat(v.high), l: parseFloat(v.low), c: parseFloat(v.close), v: 0,
+          t: v.datetime.split(' ')[1] || v.datetime
+        })).reverse();
+      }
+    }
   ];
 
-  for(let i=0; i < proxies.length; i++){
-    try {
-      const pUrl = proxies[i](targetUrl);
-      console.log(`Trying proxy ${i+1}...`);
-      const r = await fetch(pUrl);
-      if(!r.ok) continue;
-      
-      let data;
-      if(i === 0){ // AllOrigins returns a wrapper
-        const json = await r.json();
-        data = JSON.parse(json.contents);
-      } else {
-        data = await r.json();
-      }
+  for(let src of sources){
+    msg.textContent = `Trying ${src.name}...`;
+    const urls = src.getUrls(ticker, yf_int, range);
+    
+    for(let [idx, url] of urls.entries()){
+      try {
+        const r = await fetch(url);
+        if(!r.ok) continue;
+        
+        const candles = await src.parser(r, idx);
+        if(!candles || candles.length < 3) continue;
 
-      const result = data.chart.result[0];
-      const quotes = result.indicators.quote[0];
-      const timestamps = result.timestamp;
-      
-      if(!timestamps || !quotes.close) continue;
-
-      clearRows();
-      let ok = 0;
-      const startIdx = Math.max(0, timestamps.length - count);
-      for(let j=startIdx; j<timestamps.length; j++){
-        const o = quotes.open[j], h = quotes.high[j], l = quotes.low[j], c = quotes.close[j], v = quotes.volume[j] || 0;
-        if(o && h && l && c){
-          const date = new Date(timestamps[j]*1000);
-          const ts = date.getHours().toString().padStart(2,'0') + ':' + date.getMinutes().toString().padStart(2,'0');
-          addRow(o.toFixed(5), h.toFixed(5), l.toFixed(5), c.toFixed(5), v, ts);
-          ok++;
+        clearRows();
+        let ok = 0;
+        const startIdx = Math.max(0, candles.length - count);
+        for(let j=startIdx; j<candles.length; j++){
+          const c = candles[j];
+          if(c.o && c.h && c.l && c.c){
+            addRow(c.o.toFixed(5), c.h.toFixed(5), c.l.toFixed(5), c.c.toFixed(5), c.v||0, c.t);
+            ok++;
+          }
         }
-      }
-      
-      msg.textContent = `✓ Connected via Route ${i+1} (${ok} candles)`;
-      msg.style.color = '#16A34A';
-      switchSrc('manual', document.querySelector('.src-tab'));
-      btn.textContent='Fetch Live Data'; btn.disabled=false;
-      return; // 🎯 SUCCESS!
+        
+        msg.textContent = `✓ Live Data loaded from ${src.name}`;
+        msg.style.color = '#16A34A';
+        switchSrc('manual', document.querySelector('.src-tab'));
+        btn.textContent='Fetch Live Data'; btn.disabled=false;
+        return; 
 
-    } catch(err) {
-      console.warn(`Proxy ${i+1} failed:`, err);
-      continue;
+      } catch(err) { console.warn(`${src.name} attempt failed`, err); }
     }
   }
 
-  // If we get here, all failed
-  msg.textContent = '✗ Global Market Busy. Use the MT5 Broadcaster for direct chart sync.';
+  msg.textContent = '✗ Providers Busy. Drag MMDE to any chart for 100% Direct Sync.';
   msg.style.color = 'var(--red)';
   btn.textContent='Fetch Live Data'; btn.disabled=false;
 }
