@@ -163,6 +163,7 @@
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button onclick="fetchTVFeed()" id="tv-btn" class="btn btn-primary" style="padding:10px 22px;background:#2962FF;border-color:#2962FF">Sync from TradingView</button>
+            <button onclick="copyPineScript()" class="btn" style="background:var(--surface2);border:1px solid var(--border);padding:10px 18px;font-size:12px;color:var(--text)">📋 Copy Pine Script</button>
             <div id="tv-msg" style="font-size:12px;color:var(--muted)"></div>
           </div>
         </div>
@@ -394,6 +395,36 @@ async function fetchTVFeed(){
   } finally {
     btn.textContent = 'Sync from TradingView'; btn.disabled = false;
   }
+}
+
+function copyPineScript(){
+  const script = `// © MMDE_Engine
+//@version=5
+indicator("MMDE Candle Exporter", overlay=true)
+
+// Config
+secret_key = input.string("YOUR_SECRET_HERE", "MMDE Webhook Secret")
+webhook_url = input.string("https://your-domain.com/api/mmde/tv-webhook", "MMDE Webhook URL")
+
+// Logic to send data on candle close
+if barstate.isconfirmed
+    alert_msg = '{"secret": "' + secret_key + '", "symbol": "' + syminfo.ticker + '", "interval": "' + timeframe.period + '", "market": "forex"}'
+    alert(alert_msg, alert.freq_once_per_bar_close)
+
+plot(close, color=color.new(color.blue, 100))
+label.new(bar_index, high, "MMDE Sync Active", color=color.blue, textcolor=color.white, style=label.style_label_down, size=size.small)`;
+
+  const el = document.createElement('textarea');
+  el.value = script;
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+  
+  const msg = document.getElementById('tv-msg');
+  msg.textContent = '✓ Script copied to clipboard!';
+  msg.style.color = 'var(--green)';
+  setTimeout(()=>msg.textContent='', 3000);
 }
 
 // ── MODULES ──
