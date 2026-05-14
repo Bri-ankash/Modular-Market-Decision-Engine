@@ -1,1 +1,1 @@
-web: gunicorn config.wsgi --workers 2
+web: python manage.py migrate && gunicorn config.wsgi --workers 2
