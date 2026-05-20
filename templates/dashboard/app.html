@@ -65,7 +65,8 @@
 
       <div class="card" style="margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Instrument</div>
-        <input type="text" id="symbol" value="EURUSD" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:800;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text);margin-bottom:8px" placeholder="e.g. EURUSD"/>
+        <input type="text" id="symbol" list="market-instruments" value="EURUSD" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:800;font-family:'Courier New',monospace;outline:none;background:var(--surface2);color:var(--text);margin-bottom:8px" placeholder="e.g. EURUSD or Select"/>
+        <datalist id="market-instruments"></datalist>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
           <div>
             <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Timeframe</div>
@@ -213,16 +214,42 @@
 let currentMkt = '{{ allowed_markets.0|default:"forex" }}';
 let rowId = 0;
 
+const marketSymbols = {
+  forex: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'AUDUSD', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'EURAUD', 'CADJPY', 'CHFJPY', 'NZDJPY', 'GBPAUD', 'GBPCAD'],
+  gold: ['XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD', 'GOLD', 'SILVER'],
+  indices: ['US30', 'SPX500', 'NAS100', 'US2000', 'VIX', 'GER40', 'UK100', 'JPN225', 'AUS200', 'FRA40', 'ESP35', 'ITA40', 'HK50', 'CHN50'],
+  crypto: ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD', 'XRPUSD', 'ADAUSD', 'DOTUSD', 'AVAXUSD', 'MATICUSD', 'LINKUSD', 'LTCUSD', 'ETCUSD', 'DOGEUSD'],
+  stocks: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD', 'NFLX', 'UBER', 'COIN', 'BABA', 'V', 'JPM', 'BAC', 'WMT', 'DIS', 'PYPL', 'INTC', 'ORCL', 'SHOP', 'SQ', 'PLTR', 'RBLX', 'SNAP']
+};
+
 // ── MARKET ──
 function selectMkt(m, btn){
   currentMkt = m;
-  document.querySelectorAll('.mkt-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) {
+    document.querySelectorAll('.mkt-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  
+  const datalist = document.getElementById('market-instruments');
+  datalist.innerHTML = '';
+  if(marketSymbols[m]) {
+    marketSymbols[m].forEach(sym => {
+      const option = document.createElement('option');
+      option.value = sym;
+      datalist.appendChild(option);
+    });
+  }
+
   const sym = {forex:'EURUSD',gold:'XAUUSD',indices:'US30',crypto:'BTCUSD',stocks:'AAPL'};
   document.getElementById('symbol').value = sym[m] || '';
   // 🔥 AUTO-FETCH LIVE DATA
-  fetchLive();
+  if(btn) fetchLive();
 }
+
+// Init datalist on load
+document.addEventListener("DOMContentLoaded", () => {
+  selectMkt(currentMkt, null);
+});
 
 // ── SOURCE TABS ──
 function switchSrc(name, btn){
