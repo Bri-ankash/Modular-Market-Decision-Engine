@@ -111,7 +111,6 @@
           <div style="display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border)">
             <button class="src-tab active" onclick="switchSrc('live',this)">📡 Live Feed</button>
             <button class="src-tab" onclick="switchSrc('manual',this)">✏ Manual</button>
-            <button class="src-tab" onclick="switchSrc('tradingview',this)">📡 External (MT5/TV)</button>
             <button class="src-tab" onclick="switchSrc('csv',this)">📋 CSV</button>
           </div>
         </div>
@@ -150,22 +149,7 @@
           </div>
         </div>
 
-        <!-- TRADINGVIEW -->
-        <div class="src-panel" id="src-tradingview">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid var(--border)">
-            🌐 <strong>Sync with TradingView:</strong> Link your TradingView alerts to MMDE.<br/>
-            1. Set your webhook URL in TradingView to:<br/>
-            <code style="background:var(--border);padding:4px 8px;border-radius:5px;display:block;margin:5px 0;font-size:11px" id="webhook-url">https://{{ request.get_host }}/api/mmde/tv-webhook</code>
-            2. In your Pine Script alert, include your secret:<br/>
-            <code style="background:var(--border);padding:2px 6px;border-radius:4px;font-weight:700">{{ user.webhook_secret }}</code><br/>
-            3. Click the button below to pull the latest candles.
-          </div>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button onclick="fetchTVFeed()" id="tv-btn" class="btn btn-primary" style="padding:10px 22px;background:#2962FF;border-color:#2962FF">Sync from TradingView</button>
-            <button onclick="copyPineScript()" class="btn" style="background:var(--surface2);border:1px solid var(--border);padding:10px 18px;font-size:12px;color:var(--text)">📋 Copy Pine Script</button>
-            <div id="tv-msg" style="font-size:12px;color:var(--muted)"></div>
-          </div>
-        </div>
+
 
         <!-- LIVE FETCH -->
         <div class="src-panel active" id="src-live">
@@ -343,152 +327,36 @@ async function fetchLive(){
   btn.textContent='Fetching...'; btn.disabled=true;
   msg.textContent=`Connecting to Global Market...`; msg.style.color='var(--muted)';
 
-  const yf_map = {
-    'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','XAUUSD':'GC=F','GOLD':'GC=F','BTCUSD':'BTC-USD','US30':'YM=F'
-  };
-  const ticker = yf_map[symbol.toUpperCase()] || (symbol.toUpperCase() + '=X');
-  const yf_int = {M1:'1m',M5:'5m',M15:'15m',M30:'30m',H1:'1h',H4:'1h',D1:'1d'}[interval] || '1h';
-  const range  = {M1:'1d',M5:'5d',M15:'5d',M30:'30d',H1:'60d',H4:'60d',D1:'365d'}[interval] || '60d';
-  
-  const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${yf_int}&range=${range}`;
-  
-  // 🛡️ RESILIENT PROXY ROTATION
-  // 🛡️ TRIPLE-SOURCE ROTATION
-  const sources = [
-    // Source 1: Yahoo Finance via Proxies
-    {
-      name: 'Yahoo Finance',
-      getUrls: (ticker, int, rng) => [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`,
-        `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${int}&range=${rng}`)}`
-      ],
-      parser: async (r, idx) => {
-        let data = await r.json();
-        if(idx === 0) data = JSON.parse(data.contents);
-        const res = data.chart.result[0];
-        const q = res.indicators.quote[0];
-        return res.timestamp.map((ts, i) => ({
-          o: q.open[i], h: q.high[i], l: q.low[i], c: q.close[i], v: q.volume[i],
-          t: new Date(ts*1000).getHours().toString().padStart(2,'0') + ':' + new Date(ts*1000).getMinutes().toString().padStart(2,'0')
-        }));
-      }
-    },
-    // Source 2: Twelve Data (Direct Public API)
-    {
-      name: 'Twelve Data',
-      getUrls: (ticker, int) => {
-        const s = ticker.replace('=X','').replace('/','');
-        const i = { '1h':'1h', '1m':'1min', '5m':'5min', '15m':'15min', '1d':'1day' }[int] || '1h';
-        return [`https://api.twelvedata.com/time_series?symbol=${s}&interval=${i}&outputsize=50&apikey=demo`];
-      },
-      parser: async (r) => {
-        const data = await r.json();
-        if(data.status === 'error') throw new Error(data.message);
-        return data.values.map(v => ({
-          o: parseFloat(v.open), h: parseFloat(v.high), l: parseFloat(v.low), c: parseFloat(v.close), v: 0,
-          t: v.datetime.split(' ')[1] || v.datetime
-        })).reverse();
-      }
-    }
-  ];
-
-  for(let src of sources){
-    msg.textContent = `Trying ${src.name}...`;
-    const urls = src.getUrls(ticker, yf_int, range);
-    
-    for(let [idx, url] of urls.entries()){
-      try {
-        const r = await fetch(url);
-        if(!r.ok) continue;
-        
-        const candles = await src.parser(r, idx);
-        if(!candles || candles.length < 3) continue;
-
-        clearRows();
-        let ok = 0;
-        const startIdx = Math.max(0, candles.length - count);
-        for(let j=startIdx; j<candles.length; j++){
-          const c = candles[j];
-          if(c.o && c.h && c.l && c.c){
-            addRow(c.o.toFixed(5), c.h.toFixed(5), c.l.toFixed(5), c.c.toFixed(5), c.v||0, c.t);
-            ok++;
-          }
-        }
-        
-        msg.textContent = `✓ Live Data loaded from ${src.name}`;
-        msg.style.color = '#16A34A';
-        switchSrc('manual', document.querySelector('.src-tab'));
-        btn.textContent='Fetch Live Data'; btn.disabled=false;
-        return; 
-
-      } catch(err) { console.warn(`${src.name} attempt failed`, err); }
-    }
-  }
-
-  msg.textContent = '✗ Providers Busy. Drag MMDE to any chart for 100% Direct Sync.';
-  msg.style.color = 'var(--red)';
-  btn.textContent='Fetch Live Data'; btn.disabled=false;
-}
-
-async function fetchTVFeed(){
-  const btn = document.getElementById('tv-btn');
-  const msg = document.getElementById('tv-msg');
-  btn.textContent = 'Checking...'; btn.disabled = true;
-  msg.textContent = 'Polling latest candles from gateway...';
-  
   try {
-    const r = await fetch('/api/mmde/get-tv-feed');
-    const d = await r.json();
-    if(!d.found){
-      msg.textContent = '✗ ' + (d.message || 'No data found');
-      msg.style.color = 'var(--red)';
-      return;
+    const url = `/api/market-data/?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&count=${encodeURIComponent(count)}`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (data.error) {
+      throw new Error(data.error);
     }
-    // Load candles into manual grid
+
+    if (!data.candles || data.candles.length < 3) {
+      throw new Error('Not enough data returned. Please try again.');
+    }
+
     clearRows();
-    d.candles.forEach(c => addRow(c.open, c.high, c.low, c.close, c.volume, c.timestamp || ''));
-    document.getElementById('symbol').value = d.symbol;
-    document.getElementById('interval').value = d.interval;
-    msg.textContent = `✓ Loaded ${d.candles.length} candles for ${d.symbol} (${d.interval})`;
-    msg.style.color = 'var(--green)';
+    let ok = 0;
+    data.candles.forEach(c => {
+      addRow(c.open.toFixed(5), c.high.toFixed(5), c.low.toFixed(5), c.close.toFixed(5), c.volume || 0, c.timestamp);
+      ok++;
+    });
+
+    msg.textContent = `✓ Live Data loaded successfully from ${data.source || 'Backend'}`;
+    msg.style.color = '#16A34A';
     switchSrc('manual', document.querySelector('.src-tab'));
-  } catch(e) {
-    msg.textContent = '✗ Error: ' + e.message;
+    
+  } catch(err) {
+    msg.textContent = '✗ ' + err.message;
     msg.style.color = 'var(--red)';
   } finally {
-    btn.textContent = 'Sync from TradingView'; btn.disabled = false;
+    btn.textContent='Fetch Live Data'; btn.disabled=false;
   }
-}
-
-function copyPineScript(){
-  const script = `// © MMDE_Engine
-//@version=5
-indicator("MMDE Candle Exporter", overlay=true)
-
-// Config (Automatically filled for your account)
-secret_key = input.string("{{ user.webhook_secret }}", "MMDE Webhook Secret")
-webhook_url = input.string("https://{{ request.get_host }}/api/mmde/tv-webhook", "MMDE Webhook URL")
-
-// Logic to send data on candle close
-if barstate.isconfirmed
-    alert_msg = '{"secret": "' + secret_key + '", "symbol": "' + syminfo.ticker + '", "interval": "' + timeframe.period + '", "market": "forex"}'
-    alert(alert_msg, alert.freq_once_per_bar_close)
-
-plot(close, color=color.new(color.blue, 100))
-label.new(bar_index, high, "MMDE Sync Active", color=color.blue, textcolor=color.white, style=label.style_label_down, size=size.small)`;
-
-  const el = document.createElement('textarea');
-  el.value = script;
-  document.body.appendChild(el);
-  el.select();
-  document.execCommand('copy');
-  document.body.removeChild(el);
-  
-  const msg = document.getElementById('tv-msg');
-  msg.textContent = '✓ Script copied to clipboard!';
-  msg.style.color = 'var(--green)';
-  setTimeout(()=>msg.textContent='', 3000);
 }
 
 // ── MODULES ──

@@ -204,14 +204,21 @@ def _fetch_yfinance(ticker_sym, symbol, yf_interval, yf_period, limit, original_
     import pandas as pd
     import numpy as np
 
-    ticker = yf.Ticker(ticker_sym)
-    df     = ticker.history(
-        period       = yf_period,
-        interval     = yf_interval,
-        auto_adjust  = True,
-        back_adjust  = False,
-        repair       = True,
-    )
+    try:
+        ticker = yf.Ticker(ticker_sym)
+        df     = ticker.history(
+            period       = yf_period,
+            interval     = yf_interval,
+            auto_adjust  = True,
+            back_adjust  = False,
+            repair       = True,
+        )
+    except Exception:
+        df = pd.DataFrame()
+
+    if df is None or df.empty:
+        # Fallback to yf.download if ticker.history fails or returns empty
+        df = yf.download(tickers=ticker_sym, period=yf_period, interval=yf_interval, progress=False)
 
     if df is None or df.empty:
         raise ValueError(f'Empty dataframe returned for {ticker_sym}')
@@ -222,6 +229,9 @@ def _fetch_yfinance(ticker_sym, symbol, yf_interval, yf_period, limit, original_
 
     # ── Normalise column names ──
     df.columns = [str(c).lower().strip() for c in df.columns]
+
+    # ── Remove duplicate columns (multi-ticker edge case) ──
+    df = df.loc[:, ~df.columns.duplicated()].copy()
 
     # ── Ensure required columns exist ──
     required = {'open', 'high', 'low', 'close'}
@@ -454,7 +464,10 @@ def _fetch_stooq(symbol, interval, limit):
     
     url = f"https://stooq.com/q/d/l/?s={s}&i={stooq_int}"
     
-    resp = requests.get(url, timeout=10)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    resp = requests.get(url, headers=headers, timeout=10)
     if resp.status_code != 200:
         return None
         
