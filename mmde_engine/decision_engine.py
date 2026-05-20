@@ -99,9 +99,13 @@ def run(candles: list, symbol: str = 'UNKNOWN', selected_modules: list = None,
     structure = _market_structure(clean, closes, highs, lows)
     personality = structure['type']
 
-    # Boost scores based on structure
-    if personality == 'trending_up':   buy_pct  *= 1.20
-    if personality == 'trending_down': sell_pct *= 1.20
+    # Boost scores based on structure and filter counter-trend
+    if personality == 'trending_up':   
+        buy_pct  *= 1.20
+        sell_pct *= 0.50  # Discount counter-trend signals
+    if personality == 'trending_down': 
+        sell_pct *= 1.20
+        buy_pct  *= 0.50  # Discount counter-trend signals
 
     # ── FINAL DECISION ───────────────────────────────────────
     diff = abs(buy_pct - sell_pct)
@@ -131,6 +135,17 @@ def run(candles: list, symbol: str = 'UNKNOWN', selected_modules: list = None,
     # ── RISK ENGINE — Entry / SL / TP ────────────────────────
     interval = params.get('interval', 'H1').upper()
     risk = _risk_engine(clean, closes, highs, lows, current, action, symbol, interval)
+
+    # ── INSTITUTIONAL RISK FILTER ────────────────────────────
+    if action in ['BUY', 'SELL']:
+        try:
+            rr_val = float(str(risk['rr']).split(':')[0])
+            if rr_val < 1.2:
+                caution_msg = f" ⛔ TRADE REJECTED: Structural Stop Loss is too wide (Risk:Reward {rr_val}:1). Minimum 1.2:1 required for institutional safety."
+                action = 'WAIT'
+                confidence = 0.20
+        except:
+            pass
 
     # ── REASONS ──────────────────────────────────────────────
     reasons = [s['reason'] for s in signals
@@ -384,12 +399,29 @@ def _imbalance(candles):
     conf    = max(0.45, 0.76 - age * 0.04)
     midpt   = round((lvl1 + lvl2) / 2, 5)
 
+    current = candles[-1]['close']
+
+    if sig == 'BUY':
+        if current > lvl2:
+            return {'module':'imbalance','signal':'NEUTRAL','confidence':0.50, 'strength':'medium',
+                    'reason': f'Bullish FVG below at {lvl1:.5f}–{lvl2:.5f}. Price is currently drawn to it as a magnet. Wait for tap.'}
+        elif lvl1 <= current <= lvl2:
+            return {'module':'imbalance','signal':'BUY','confidence':conf, 'strength':'strong',
+                    'reason': f'Price has tapped into Bullish FVG ({lvl1:.5f}–{lvl2:.5f}) and is mitigating the imbalance. Good buy zone.'}
+    elif sig == 'SELL':
+        if current < lvl1:
+            return {'module':'imbalance','signal':'NEUTRAL','confidence':0.50, 'strength':'medium',
+                    'reason': f'Bearish FVG above at {lvl1:.5f}–{lvl2:.5f}. Price is currently drawn to it as a magnet. Wait for tap.'}
+        elif lvl1 <= current <= lvl2:
+            return {'module':'imbalance','signal':'SELL','confidence':conf, 'strength':'strong',
+                    'reason': f'Price has tapped into Bearish FVG ({lvl1:.5f}–{lvl2:.5f}) and is mitigating the imbalance. Good sell zone.'}
+
     return {
         'module':'imbalance',
         'signal': sig,
         'confidence': round(conf, 2),
         'strength': 'strong' if conf > 0.65 else 'medium',
-        'reason': f'{"Bullish" if sig=="BUY" else "Bearish"} FVG between {lvl1:.5f}–{lvl2:.5f} (mid: {midpt}). Price may retrace to fill this gap. {age} candles ago.'
+        'reason': f'{"Bullish" if sig=="BUY" else "Bearish"} FVG between {lvl1:.5f}–{lvl2:.5f} (mid: {midpt}). {age} candles ago.'
     }
 
 
@@ -405,9 +437,21 @@ def _volume(candles, closes, volumes):
     change   = abs(closes[-1]-closes[-2])/closes[-2]*100 if len(closes)>=2 else 0
 
     if ratio > 2.0:
+        last = candles[-1]
+        body = abs(last['close'] - last['open'])
+        wick_up = last['high'] - max(last['open'], last['close'])
+        wick_dn = min(last['open'], last['close']) - last['low']
+
+        if price_up and wick_up > body * 1.5:
+            return {'module':'volume','signal':'SELL','confidence':0.85,'strength':'strong',
+                    'reason':f'Volume climax ({ratio:.1f}x) on green candle with heavy upper wick. Buyers exhausted, Smart Money selling.'}
+        if not price_up and wick_dn > body * 1.5:
+            return {'module':'volume','signal':'BUY','confidence':0.85,'strength':'strong',
+                    'reason':f'Volume climax ({ratio:.1f}x) on red candle with heavy lower wick. Sellers exhausted, Smart Money buying.'}
+
         sig  = 'BUY' if price_up else 'SELL'
         return {'module':'volume','signal':sig,'confidence':min(0.82,0.55+ratio*0.06),'strength':'strong',
-                'reason':f'Volume spike {ratio:.1f}x average with {"bullish" if price_up else "bearish"} price move ({change:.3f}%). Institutional activity.'}
+                'reason':f'Volume spike {ratio:.1f}x average with strong {"bullish" if price_up else "bearish"} close. Institutional continuation.'}
     if ratio > 1.5:
         sig  = 'BUY' if price_up else 'SELL'
         return {'module':'volume','signal':sig,'confidence':0.60,'strength':'medium',
@@ -586,28 +630,18 @@ def _risk_engine(candles, closes, highs, lows, current, action, symbol, interval
 
     if action == 'BUY':
         entry = round(current, dec)
-        # Use swing low for SL if it's within a reasonable distance, otherwise use ATR
+        # Strict structural SL
         recent_low = min(lows[-min(lb, n):])
-        sl_candidate = round(recent_low - atr * 0.2, dec)
+        sl = round(recent_low - atr * 0.2, dec)
         
-        # If swing low is too far (> 2x ATR dist), cap it at ATR dist
-        if (current - sl_candidate) > sl_dist * 1.5:
-            sl = round(current - sl_dist, dec)
-        else:
-            sl = sl_candidate
-            
         tp1   = round(current + tp_dist, dec)
         tp2   = round(current + tp2_dist, dec)
 
     elif action == 'SELL':
         entry = round(current, dec)
+        # Strict structural SL
         recent_high = max(highs[-min(lb, n):])
-        sl_candidate = round(recent_high + atr * 0.2, dec)
-
-        if (sl_candidate - current) > sl_dist * 1.5:
-            sl = round(current + sl_dist, dec)
-        else:
-            sl = sl_candidate
+        sl = round(recent_high + atr * 0.2, dec)
 
         tp1   = round(current - tp_dist, dec)
         tp2   = round(current - tp2_dist, dec)
